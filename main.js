@@ -10,7 +10,13 @@ const $ = (id) => document.getElementById(id);
 // lit digits padded with figure spaces so they sit over their ghost cells
 const setNum = (el, n) => (el.textContent = String(n).padStart(el.dataset.ghost.length, " "));
 
-const renderer = new THREE.WebGLRenderer({ canvas: $("stage"), antialias: true, alpha: true });
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: $("stage"), antialias: true, alpha: true });
+} catch (err) {
+  window.__loadFail();
+  throw err;
+}
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -105,18 +111,24 @@ $("explode").addEventListener("input", (e) => {
   apply();
 });
 
-// hover: designation bracket locks onto the part's screen-space bounds
+// hover (mouse) or tap (touch): designation bracket locks onto the part's screen-space bounds
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), box = new THREE.Box3();
-renderer.domElement.addEventListener("pointermove", (e) => {
-  if (e.pointerType === "touch") return;
-  ndc.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+function pick(x, y) {
+  ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   let o = ray.intersectObjects(parts, true)[0]?.object;
   while (o && !parts.includes(o)) o = o.parent;
   hovered = o ?? null;
   $("tip").textContent = hovered ? hovered.userData.label : "";
+}
+let down = null;
+renderer.domElement.addEventListener("pointermove", (e) => { if (e.pointerType !== "touch") pick(e.clientX, e.clientY); });
+renderer.domElement.addEventListener("pointerdown", (e) => (down = [e.clientX, e.clientY]));
+renderer.domElement.addEventListener("pointerup", (e) => {
+  // a tap (not an orbit drag) selects on touch screens
+  if (e.pointerType === "touch" && down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) < 8) pick(e.clientX, e.clientY);
 });
-renderer.domElement.addEventListener("pointerleave", () => (hovered = null));
+renderer.domElement.addEventListener("pointerleave", (e) => { if (e.pointerType !== "touch") hovered = null; });
 
 function drawLock() {
   const lock = $("lock");
@@ -134,14 +146,17 @@ function drawLock() {
   lock.style.height = `${y1 - y0 + 12}px`;
 }
 
+let pull = 1;
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  // keep the exploded airframe in frame on portrait screens
+  // keep the exploded airframe in frame on portrait screens; rescale distance only,
+  // so the visitor's orbit angle survives resizes (mobile URL bar, rotation)
   const k = Math.max(1, 1.6 / camera.aspect);
   controls.maxDistance = 40 * k; // otherwise the clamp undoes the pull-back
-  camera.position.copy(BASE_POS).multiplyScalar(k);
+  camera.position.multiplyScalar(k / pull);
+  pull = k;
   controls.update();
 }
 addEventListener("resize", resize);
@@ -156,4 +171,4 @@ renderer.setAnimationLoop(() => {
   drawLock();
 });
 
-window.__viewer = { ready, get parts() { return parts; }, setT(v) { setTarget(v); t = v; apply(); } };
+window.__viewer = { ready, camera, get parts() { return parts; }, setT(v) { setTarget(v); t = v; apply(); } };

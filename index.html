@@ -33,7 +33,7 @@
 
   <label class="tape">
     <span class="tape-label">SEP</span>
-    <input id="explode" type="range" min="0" max="1000" value="0" aria-label="Separation" disabled />
+    <input id="explode" type="range" min="0" max="1000" step="10" value="0" aria-label="Separation" disabled />
   </label>
 
   <footer class="hud-bottom">
@@ -45,6 +45,14 @@
     <p id="credit">Model: <a href="https://sketchfab.com/3d-models/f16a-8e318343bf174e8f955707df54cb1fa6" target="_blank" rel="noopener">F16A</a> by <a href="https://sketchfab.com/amf1re" target="_blank" rel="noopener">amf1re</a></p>
   </footer>
 
-  <script type="module" src="main.js"></script>
+  <script>
+    // shown if three.js / main.js can't load (offline, CDN down) or WebGL is unavailable
+    window.__loadFail = () => {
+      const s = document.getElementById("status");
+      s.hidden = false; s.classList.add("error");
+      s.textContent = "Couldn't load the 3D viewer. Check your connection and reload the page.";
+    };
+  </script>
+  <script type="module" src="main.js" onerror="__loadFail()"></script>
 </body>
 </html>
