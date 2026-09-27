@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T02:05:00Z",
+  "title": "Design System: F-16A Exploded View",
+  "extensions": {
+    "colorMeta": {
+      "hud": { "role": "primary", "displayName": "HUD Phosphor", "tonalRamp": ["rgb(108 255 143 / 0.22)", "rgb(108 255 143 / 0.62)", "#6cff8f"] },
+      "sky-0": { "role": "neutral", "displayName": "Dusk Sky (zenith)" },
+      "sky-1": { "role": "neutral", "displayName": "Dusk Sky (low)" },
+      "horizon": { "role": "neutral", "displayName": "Horizon Ember" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Designation", "purpose": "Aircraft type only." },
+      "softkey": { "displayName": "Soft-key", "purpose": "The single primary action." },
+      "label": { "displayName": "Label", "purpose": "Captions, parts, nav." },
+      "readout": { "displayName": "Readout", "purpose": "Changing numbers." }
+    },
+    "shadows": [{ "name": "ink-shadow", "value": "0 1px 2px rgb(0 0 0 / 0.55)", "purpose": "Keeps green legible over bright metal." }],
+    "motion": [
+      { "name": "bracket-spread", "value": "180ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Soft-key brackets open on hover." },
+      { "name": "explode", "value": "1.8s sweep, easeInOutCubic per part, staggered over half the timeline", "purpose": "The signature disassembly." }
+    ],
+    "breakpoints": [{ "name": "phone", "value": "640px" }]
+  },
+  "components": [
+    {
+      "name": "Soft-key",
+      "kind": "button",
+      "refersTo": "softkey",
+      "description": "Bracketed primary action.",
+      "html": "<button class=\"ds-softkey\">Disassemble</button>",
+      "css": ".ds-softkey{font:700 15px/1 B612,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#6cff8f;background:none;border:0;padding:14px 28px;position:relative;cursor:pointer}.ds-softkey::before,.ds-softkey::after{content:\"\";position:absolute;top:0;bottom:0;width:10px;border:1px solid #6cff8f;transition:translate 180ms cubic-bezier(.16,1,.3,1)}.ds-softkey::before{left:0;border-right:0}.ds-softkey::after{right:0;border-left:0}.ds-softkey:hover::before{translate:-4px 0}.ds-softkey:hover::after{translate:4px 0}.ds-softkey:active{background:#6cff8f;color:#0c1218}"
+    },
+    {
+      "name": "Mode switch",
+      "kind": "nav",
+      "description": "Text modes, 1px underline on current.",
+      "html": "<nav class=\"ds-modes\"><a aria-current=\"page\">Airframe</a><span>Cockpit <small>soon</small></span></nav>",
+      "css": ".ds-modes{display:flex;gap:20px;font:12px B612,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6cff8f}.ds-modes a{border-bottom:1px solid #6cff8f;padding-bottom:4px}.ds-modes span{color:rgb(108 255 143/.22)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The jet's own HUD",
+    "overview": "Collimated phosphor symbology over a dusk sky; the aircraft leads, the interface lives on the edges.",
+    "keyCharacteristics": ["Ink-only green", "B612 cockpit face", "1px strokes and L-brackets", "No panels"],
+    "rules": [
+      { "name": "The Ink-Only Rule", "body": "Green is a line or a letter, never an area.", "section": "colors" },
+      { "name": "Three Brightnesses", "body": "100%, 62%, 22% of HUD green; nothing else.", "section": "colors" }
+    ],
+    "dos": ["Keep the aircraft centred, symbology on the edges", "1px strokes everywhere", "Fixed-width changing numbers"],
+    "donts": ["No green fills, panels, blur or bloom", "No ghost 8s behind digits", "No invented performance figures"]
+  }
+}
