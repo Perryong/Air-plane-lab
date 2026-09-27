@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>F-16A Exploded View</title>
+  <meta name="description" content="Take an F-16A apart and put it back together in 3D." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono&display=swap" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  { "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  } }
+  </script>
+</head>
+<body>
+  <canvas id="stage" aria-label="3D model of an F-16A. Drag to orbit, scroll to zoom."></canvas>
+
+  <header class="hud-top">
+    <h1><span class="type">F-16A</span> <span class="sub">Airframe · exploded view</span></h1>
+    <nav class="modes" aria-label="View mode">
+      <a aria-current="page">Airframe</a>
+      <span class="soon" aria-disabled="true">Cockpit <small>soon</small></span>
+    </nav>
+  </header>
+
+  <p id="status" role="status" aria-live="polite">Acquiring airframe <span class="num" data-ghost="888">0</span>%</p>
+
+  <div id="lock" hidden aria-hidden="true"><span id="tip"></span></div>
+
+  <label class="tape">
+    <span class="tape-label">SEP</span>
+    <input id="explode" type="range" min="0" max="1000" value="0" aria-label="Separation" disabled />
+  </label>
+
+  <footer class="hud-bottom">
+    <p class="readout" aria-hidden="true">
+      <span>SEP <span class="num" id="sep" data-ghost="888">0</span>%</span>
+      <span><span class="num" data-ghost="88">10</span> sections</span>
+    </p>
+    <button id="toggle" type="button" aria-pressed="false" disabled>Disassemble</button>
+    <p id="credit">Model: <a href="https://sketchfab.com/3d-models/f16a-8e318343bf174e8f955707df54cb1fa6" target="_blank" rel="noopener">F16A</a> by <a href="https://sketchfab.com/amf1re" target="_blank" rel="noopener">amf1re</a></p>
+  </footer>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

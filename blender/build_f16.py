@@ -105,6 +105,8 @@ for o in meshes():
     if o.name == "fuselage" or d.length < 1e-4:
         d = Vector((0, 0, -1))
     d.z += 0.35 * d.length
+    if o.name == "canopy":  # lifts off like the real hinge, not along the nose
+        d = Vector((0.25, 0, 1))
     d.normalize()
     o["explode_dir"] = [round(d.x, 5), round(d.z, 5), round(-d.y, 5)]
     o["explode_dist"] = 0.6 if o.name == "fuselage" else DIST
