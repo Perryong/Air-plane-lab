@@ -1,9 +1,23 @@
 # Air-plane-lab
 
-An interactive 3D page with two modes:
+An interactive 3D page with three modes:
 
 - **Airframe**: an F-16A that disassembles into ten sections along clean exploded-diagram axes, then reassembles. Orbit, scrub the separation tape, and hover parts for their names.
 - **Cockpit** (`#cockpit`): sit in the captain's seat of a Boeing 757-200 flight deck and look around.
+- **Fly** (`#fly`): pilot the F-16 through a timed 12-ring course over terrain, with afterburner, vapour trails and speed effects. Best time is saved in your browser.
+
+### Fly controls
+
+| Key | Action |
+|---|---|
+| W / ↑ | Climb |
+| S / ↓ | Dive |
+| A D / ← → | Roll (and turn) |
+| Space | Start · hold for afterburner |
+| P / Esc | Pause |
+| R | Restart |
+
+On phones: left stick to steer, AB button for afterburner.
 
 ## Run locally
 

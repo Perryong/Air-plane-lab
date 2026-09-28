@@ -207,6 +207,127 @@ body::after {
 .mode-cockpit::after { opacity: 1; }
 .hud-top, .hud-bottom, .heading, .hint, .status, .tape, #lock { z-index: 2; }
 
+/* ---- fly mode ---------------------------------------------------------- */
+.flyhud { display: none; }
+.mode-fly .flyhud { display: block; }
+.mode-fly .tape, .mode-fly #toggle, .mode-fly .readout, .mode-fly #lock, .mode-fly #status,
+.mode-fly .heading, .mode-fly .hint, .mode-fly #cstatus, .mode-fly .credit-cockpit { display: none; }
+.mode-airframe #fstatus, .mode-cockpit #fstatus { display: none; }
+.mode-fly #credit { grid-column: -2; }
+.mode-fly::after { opacity: 1; }
+.flyhud > * { z-index: 2; }
+.mode-fly .hud-top { z-index: 3; } /* nav stays clickable above the full-screen overlays */
+.fly-read {
+  position: fixed;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--hud-mid);
+}
+.fly-read .num { color: var(--hud); font-size: 13px; }
+.fly-left { left: var(--gutter); }
+.fly-right { right: var(--gutter); text-align: right; }
+.burner {
+  --b: 0;
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--gutter) + 6px);
+  translate: -50% 0;
+  width: 160px;
+  height: 18px;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  font-size: 11px;
+  background:
+    linear-gradient(var(--hud), var(--hud)) left bottom / calc(var(--b) * 100%) 3px no-repeat,
+    linear-gradient(var(--hud-dim), var(--hud-dim)) left bottom / 100% 1px no-repeat;
+  color: var(--hud-mid);
+  padding-bottom: 8px;
+}
+.fly-over {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 14px;
+  text-align: center;
+  cursor: pointer;
+}
+.fly-over[hidden], .fly-flash[hidden] { display: none; }
+.fly-over { background: radial-gradient(60% 55% at 50% 50%, rgb(12 18 24 / 0.72), rgb(12 18 24 / 0.35)); }
+.flymark {
+  position: fixed;
+  left: 0; top: 0;
+  pointer-events: none;
+  --c: 10px;
+  background:
+    linear-gradient(var(--hud), var(--hud)) top left / var(--c) 1px,
+    linear-gradient(var(--hud), var(--hud)) top left / 1px var(--c),
+    linear-gradient(var(--hud), var(--hud)) top right / var(--c) 1px,
+    linear-gradient(var(--hud), var(--hud)) top right / 1px var(--c),
+    linear-gradient(var(--hud), var(--hud)) bottom left / var(--c) 1px,
+    linear-gradient(var(--hud), var(--hud)) bottom left / 1px var(--c),
+    linear-gradient(var(--hud), var(--hud)) bottom right / var(--c) 1px,
+    linear-gradient(var(--hud), var(--hud)) bottom right / 1px var(--c);
+  background-repeat: no-repeat;
+}
+.flymark[hidden] { display: none; }
+.flymark.off { --c: 22px; border-radius: 50%; outline: 1px solid var(--hud); background: none; }
+#flydist { position: absolute; left: 50%; top: calc(100% + 6px); translate: -50% 0; font: 11px var(--mono); white-space: nowrap; }
+.fly-over h2 { margin: 0; font-size: clamp(26px, 4vw, 40px); font-weight: 700; letter-spacing: 0.04em; }
+.fly-over p { margin: 0; color: var(--hud-mid); text-transform: none; letter-spacing: 0.02em; max-width: 40ch; }
+.fly-over .go { color: var(--hud); text-transform: uppercase; letter-spacing: 0.14em; }
+.legend { display: grid; grid-template-columns: auto auto; gap: 6px 16px; margin: 4px 0; font-size: 12px; }
+.legend dt { color: var(--hud); text-align: right; font-family: var(--mono); }
+.legend dd { margin: 0; color: var(--hud-mid); text-align: left; }
+#flyagain { font: 700 15px/1 var(--face); letter-spacing: 0.14em; text-transform: uppercase; color: var(--hud); background: none; border: 1px solid var(--hud); padding: 12px 24px; cursor: pointer; }
+#flyagain:hover { background: var(--hud); color: var(--sky-0); text-shadow: none; }
+.fly-flash { position: fixed; top: 30%; left: 50%; translate: -50% 0; margin: 0; font-size: 15px; letter-spacing: 0.14em; }
+/* touch controls: only on coarse pointers */
+.stick, .ab { display: none; }
+@media (pointer: coarse) {
+  .mode-fly .stick, .mode-fly .ab { display: block; }
+  .mode-fly .fly-read { top: auto; bottom: 190px; translate: none; }
+}
+.stick {
+  position: fixed;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + 40px);
+  width: 128px;
+  height: 128px;
+  border: 1px solid var(--hud-mid);
+  border-radius: 50%;
+  touch-action: none;
+}
+.stick .knob {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 44px; height: 44px;
+  margin: -22px 0 0 -22px;
+  border: 1px solid var(--hud);
+  border-radius: 50%;
+}
+.ab {
+  position: fixed;
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + 72px);
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--hud);
+  border-radius: 50%;
+  background: none;
+  color: var(--hud);
+  font: 700 15px/1 var(--face);
+  letter-spacing: 0.1em;
+  touch-action: none;
+}
+.ab:active { background: var(--hud); color: var(--sky-0); text-shadow: none; }
+
 /* heading tape: the flight deck's signature symbology */
 .heading {
   position: fixed;

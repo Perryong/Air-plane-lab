@@ -4,7 +4,7 @@ import * as THREE from "three";
 import {
   CRUISE, forward, stepFlight, terrainHeight, makeCourse, hitGround,
   startState, respawnState, newRace, advanceRace, combineInput,
-} from "./flight.js?v=8";
+} from "./flight.js?v=9";
 
 const $ = (id) => document.getElementById(id);
 const BEST_KEY = "f16-ring-best";
@@ -48,20 +48,21 @@ export function createFly({ renderer, f16, env, reduced }) {
   grad.addColorStop(0, "rgba(255,255,255,0.9)");
   grad.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = grad; g.fillRect(0, 0, 128, 128);
-  const cloudMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.55, depthWrite: false });
+  const cloudMat = new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.32, depthWrite: false });
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   for (let i = 0; i < 70; i++) {
     const s = new THREE.Sprite(cloudMat);
     const a = rnd() * Math.PI * 2, r = 300 + rnd() * 1500;
-    s.position.set(Math.cos(a) * r, 120 + rnd() * 140, Math.sin(a) * r);
-    s.scale.setScalar(60 + rnd() * 90);
+    s.position.set(Math.cos(a) * r, 190 + rnd() * 160, Math.sin(a) * r);
+    const k = 90 + rnd() * 120;
+    s.scale.set(k * 2.2, k, 1); // flat banks, not balls
     scene.add(s);
   }
 
   // ---- rings --------------------------------------------------------------
   const course = makeCourse();
-  const ringGeo = new THREE.TorusGeometry(course[0].radius, 0.9, 12, 48);
+  const ringGeo = new THREE.TorusGeometry(course[0].radius, 1.4, 12, 56);
   const rings = course.map((r) => {
     const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x6cff8f, transparent: true, opacity: 0.35, fog: false }));
     m.position.set(r.x, r.y, r.z);
@@ -193,13 +194,13 @@ export function createFly({ renderer, f16, env, reduced }) {
   };
   stick.addEventListener("pointerdown", (e) => {
     if (stickId !== null) return;
-    stickId = e.pointerId; stick.setPointerCapture(e.pointerId); stickMove(e); start();
+    stickId = e.pointerId; try { stick.setPointerCapture(e.pointerId); } catch {} stickMove(e); start();
   });
   stick.addEventListener("pointermove", (e) => { if (e.pointerId === stickId) stickMove(e); });
   const stickEnd = (e) => { if (e.pointerId !== stickId) return; stickId = null; touch = { ...touch, roll: 0, pitch: 0 }; knob.style.translate = "0 0"; };
   stick.addEventListener("pointerup", stickEnd);
   stick.addEventListener("pointercancel", stickEnd);
-  ab.addEventListener("pointerdown", (e) => { ab.setPointerCapture(e.pointerId); touch = { ...touch, burner: true }; start(); });
+  ab.addEventListener("pointerdown", (e) => { try { ab.setPointerCapture(e.pointerId); } catch {} touch = { ...touch, burner: true }; start(); });
   const abEnd = () => (touch = { ...touch, burner: false });
   ab.addEventListener("pointerup", abEnd);
   ab.addEventListener("pointercancel", abEnd);
@@ -285,6 +286,27 @@ export function createFly({ renderer, f16, env, reduced }) {
 
     hud();
     renderer.render(scene, camera);
+    drawMark();
+  }
+
+  // HUD target bracket on the next ring; pinned to the screen edge when off-screen
+  const mark = $("flymark"), mv = new THREE.Vector3(), edge = new THREE.Vector3();
+  function drawMark() {
+    const r = course[race.next];
+    if (!r || race.finished || !race.started) { mark.hidden = true; return; }
+    mv.set(r.x, r.y, r.z).project(camera);
+    let x = mv.x, y = mv.y;
+    const behind = mv.z > 1;
+    if (behind) { x = -x; y = -y; }
+    const off = behind || Math.abs(x) > 0.92 || Math.abs(y) > 0.86;
+    if (off) { const k = Math.max(Math.abs(x) / 0.92, Math.abs(y) / 0.86); x /= k; y /= k; }
+    const d = camera.position.distanceTo(edge.set(r.x, r.y, r.z));
+    const px = off ? 22 : clamp((r.radius / (d * Math.tan((camera.fov * Math.PI) / 360))) * innerHeight, 22, innerHeight * 0.6);
+    mark.hidden = false;
+    mark.classList.toggle("off", off);
+    mark.style.width = mark.style.height = `${px}px`;
+    mark.style.translate = `${((x + 1) / 2) * innerWidth - px / 2}px ${((1 - y) / 2) * innerHeight - px / 2}px`;
+    $("flydist").textContent = off ? "" : `${Math.round(d * 1.5)} M`;
   }
 
   function resize(aspect) { camera.aspect = aspect; camera.updateProjectionMatrix(); }

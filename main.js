@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js?v=7";
-import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=7";
+import { partOffset, stepT, framePull } from "./explode.js?v=9";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=9";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -60,7 +60,7 @@ floor.position.y = -3.4;
 floor.receiveShadow = true;
 scene.add(floor);
 
-let parts = [], t = 0, target = 0, hovered = null;
+let parts = [], t = 0, target = 0, hovered = null, airframeRoot = null;
 const tmp = new THREE.Vector3();
 
 function apply() {
@@ -94,6 +94,7 @@ const ready = loader
       p.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
     }
     scene.add(root);
+    airframeRoot = root;
     $("status").hidden = true;
     $("toggle").disabled = $("explode").disabled = false;
     apply();
@@ -187,12 +188,15 @@ function loadCockpit() {
 const TITLES = {
   airframe: ["F-16A", "Airframe · exploded view"],
   cockpit: ["757-200", "Flight deck"],
+  fly: ["F-16A", "Ring course"],
 };
 
 function applyMode(next) {
+  fly.game?.setActive(next === "fly");
   mode = next;
   document.body.classList.toggle("mode-cockpit", mode === "cockpit");
   document.body.classList.toggle("mode-airframe", mode === "airframe");
+  document.body.classList.toggle("mode-fly", mode === "fly");
   for (const a of document.querySelectorAll(".modes a[data-mode]")) {
     if (a.dataset.mode === mode) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
@@ -200,9 +204,33 @@ function applyMode(next) {
   controls.enabled = mode === "airframe";
   hovered = null;
   if (mode === "cockpit" && !cockpit.ready) loadCockpit();
+  if (mode === "fly") loadFly();
 }
 
-const modeFromHash = () => (location.hash === "#cockpit" ? "cockpit" : "airframe");
+const modeFromHash = () => ({ "#cockpit": "cockpit", "#fly": "fly" })[location.hash] ?? "airframe";
+
+// ---- fly mode: lazy-loaded ring-course game ---------------------------------
+const fly = { game: null, ready: null };
+function loadFly() {
+  if (fly.ready) return fly.ready.then(() => fly.game?.setActive(mode === "fly"));
+  const s = $("fstatus");
+  s.hidden = false; s.classList.remove("error"); s.textContent = "Preparing the course…";
+  fly.ready = Promise.all([ready, import("./fly.js?v=9")])
+    .then(([, { createFly }]) => {
+      if (!airframeRoot) throw new Error("F-16 model unavailable");
+      fly.game = createFly({ renderer, f16: airframeRoot, env: scene.environment, reduced });
+      fly.game.resize(camera.aspect);
+      fly.game.setActive(mode === "fly");
+      s.hidden = true;
+    })
+    .catch((err) => {
+      fly.ready = null;
+      console.warn("fly mode failed to load", err);
+      s.classList.add("error");
+      s.innerHTML = 'Couldn\'t start the ring course. <a href="#airframe">Back to the airframe</a>';
+    });
+  return fly.ready;
+}
 let fadeTimer = 0;
 function switchMode() {
   // a quick back-and-forth cancels the pending switch; the hash at the end of the fade wins
@@ -260,6 +288,7 @@ function resize() {
   cockCam.aspect = camera.aspect;
   cockCam.fov = camera.aspect < 0.8 ? 80 : 68;
   cockCam.updateProjectionMatrix();
+  fly.game?.resize(camera.aspect);
 }
 addEventListener("resize", resize);
 resize();
@@ -268,6 +297,7 @@ const clock = new THREE.Clock();
 const ticks = document.querySelector(".heading-ticks");
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (mode === "fly") return fly.game ? fly.game.frame(dt) : renderer.clear();
   if (mode === "cockpit") {
     if (!cockpit.scene) return renderer.clear();
     cockpit.look = stepLook(cockpit.look, cockpit.target, dt, { reduced });
@@ -289,6 +319,8 @@ window.__viewer = {
   get mode() { return mode; },
   get cockpitReady() { return cockpit.ready; },
   get look() { return cockpit.look; },
+  get fly() { return fly.game; },
+  get flyReady() { return fly.ready; },
   setT(v) { setTarget(v); t = v; apply(); },
 };
 

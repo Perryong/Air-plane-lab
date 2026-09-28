@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono&display=swap" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c1218'/%3E%3Cpath d='M5 11V5h6M21 5h6v6M27 21v6h-6M11 27H5v-6' fill='none' stroke='%236cff8f' stroke-width='2'/%3E%3Cpath d='M16 8v16M9 16h14' stroke='%236cff8f' stroke-width='2'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="style.css?v=7" />
+  <link rel="stylesheet" href="style.css?v=9" />
   <script type="importmap">
   { "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -25,6 +25,7 @@
     <nav class="modes" aria-label="View mode">
       <a href="#airframe" data-mode="airframe">Airframe</a>
       <a href="#cockpit" data-mode="cockpit">Cockpit</a>
+      <a href="#fly" data-mode="fly">Fly</a>
     </nav>
   </header>
 
@@ -38,6 +39,42 @@
   </div>
   <p id="hint" class="hint">Drag to look around</p>
   <p id="cstatus" class="status" role="status" aria-live="polite" hidden></p>
+  <p id="fstatus" class="status" role="status" aria-live="polite" hidden></p>
+
+  <section id="flyhud" class="flyhud" aria-label="Ring course">
+    <div class="fly-read fly-left">
+      <span>SPD <span class="num" id="spd">000</span> KT</span>
+      <span>ALT <span class="num" id="alt">0000</span> FT</span>
+    </div>
+    <div class="fly-read fly-right">
+      <span>RING <span class="num" id="ring">01/12</span></span>
+      <span>TIME <span class="num" id="ftime">00:00.0</span></span>
+      <span>BEST <span class="num" id="fbest">--:--.-</span></span>
+    </div>
+    <div id="burner" class="burner" aria-hidden="true"><span>AB</span></div>
+    <div id="flymark" class="flymark" hidden aria-hidden="true"><span id="flydist"></span></div>
+
+    <div id="flystart" class="fly-over">
+      <h2>Ring course</h2>
+      <p>Fly through all 12 rings in order. Beat your best time.</p>
+      <dl class="legend">
+        <dt>W / ↑</dt><dd>Climb</dd><dt>S / ↓</dt><dd>Dive</dd>
+        <dt>A D / ← →</dt><dd>Roll</dd><dt>Space</dt><dd>Afterburner</dd>
+        <dt>P</dt><dd>Pause</dd><dt>R</dt><dd>Restart</dd>
+      </dl>
+      <p class="go">Press Space or tap to fly</p>
+    </div>
+    <div id="flyend" class="fly-over" hidden>
+      <h2>Course complete</h2>
+      <p>Time <span class="num" id="fendtime">--:--.-</span> · Best <span class="num" id="fendbest">--:--.-</span></p>
+      <button id="flyagain" type="button">Fly again</button>
+    </div>
+    <p id="flypause" class="fly-flash" hidden>Paused · P to resume</p>
+    <p id="flycrash" class="fly-flash" hidden role="alert">Terrain · back to the last ring</p>
+
+    <div id="stick" class="stick" aria-hidden="true"><span class="knob"></span></div>
+    <button id="ab" class="ab" type="button" aria-label="Afterburner (hold)">AB</button>
+  </section>
 
   <label class="tape">
     <span class="tape-label">SEP</span>
@@ -64,6 +101,6 @@
       s.textContent = "Couldn't load the 3D viewer. Check your connection and reload the page.";
     };
   </script>
-  <script type="module" src="main.js?v=7" onerror="__loadFail()"></script>
+  <script type="module" src="main.js?v=9" onerror="__loadFail()"></script>
 </body>
 </html>
