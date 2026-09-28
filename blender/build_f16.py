@@ -14,7 +14,6 @@ LABELS = {"fuselage": "Fuselage", "nose_cone": "Nose cone / radome", "canopy": "
           "engine_nozzle": "Engine nozzle", "stores": "Fuel tanks & stores"}
 ORDER = ["stores", "canopy", "nose_cone", "engine_nozzle", "tail_fin",
          "stabilizer_L", "stabilizer_R", "wing_L", "wing_R", "fuselage"]
-DIST = 3.0
 
 
 def bounds(o):
@@ -98,18 +97,20 @@ bpy.ops.object.select_all(action="SELECT")
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
 bpy.ops.object.origin_set(type="ORIGIN_GEOMETRY", center="BOUNDS")
 
-# 4. explode metadata (stored in glTF axes: Blender (x,y,z) -> glTF (x, z, -y))
-fus = sc.objects["fuselage"].location.copy()
+# 4. explode metadata: exploded-diagram layout, one axis per part, fuselage is the
+#    anchor. Blender axes after step 3: +X nose, +Y pilot's left, +Z up.
+#    Stored in glTF axes: Blender (x,y,z) -> glTF (x, z, -y).
+EXPLODE = {  # part: (direction, distance)
+    "nose_cone": ((1, 0, 0), 3.0), "engine_nozzle": ((-1, 0, 0), 3.0),
+    "canopy": ((0, 0, 1), 2.5), "tail_fin": ((0, 0, 1), 3.0),
+    "wing_L": ((0, 1, 0), 3.5), "wing_R": ((0, -1, 0), 3.5),
+    "stabilizer_L": ((0, 1, 0), 3.5), "stabilizer_R": ((0, -1, 0), 3.5),
+    "stores": ((0, 0, -1), 2.5), "fuselage": ((0, 0, -1), 0.0),
+}
 for o in meshes():
-    d = o.location - fus
-    if o.name == "fuselage" or d.length < 1e-4:
-        d = Vector((0, 0, -1))
-    d.z += 0.35 * d.length
-    if o.name == "canopy":  # lifts off like the real hinge, not along the nose
-        d = Vector((0.25, 0, 1))
-    d.normalize()
-    o["explode_dir"] = [round(d.x, 5), round(d.z, 5), round(-d.y, 5)]
-    o["explode_dist"] = 0.6 if o.name == "fuselage" else DIST
+    (x, y, z), dist = EXPLODE[o.name]
+    o["explode_dir"] = [x, z, -y]
+    o["explode_dist"] = dist
     o["order"] = ORDER.index(o.name)
     o["label"] = LABELS[o.name]
     o.color = (1, 1, 1, 1)
