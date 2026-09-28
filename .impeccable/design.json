@@ -1,26 +1,74 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-28T02:05:00Z",
+  "generatedAt": "2026-09-29T00:00:00Z",
   "title": "Design System: F-16A Exploded View",
   "extensions": {
     "colorMeta": {
-      "hud": { "role": "primary", "displayName": "HUD Phosphor", "tonalRamp": ["rgb(108 255 143 / 0.22)", "rgb(108 255 143 / 0.62)", "#6cff8f"] },
-      "sky-0": { "role": "neutral", "displayName": "Dusk Sky (zenith)" },
-      "sky-1": { "role": "neutral", "displayName": "Dusk Sky (low)" },
-      "horizon": { "role": "neutral", "displayName": "Horizon Ember" }
+      "hud": {
+        "role": "primary",
+        "displayName": "HUD Phosphor",
+        "tonalRamp": [
+          "rgb(108 255 143 / 0.22)",
+          "rgb(108 255 143 / 0.62)",
+          "#6cff8f"
+        ]
+      },
+      "sky-0": {
+        "role": "neutral",
+        "displayName": "Dusk Sky (zenith)"
+      },
+      "sky-1": {
+        "role": "neutral",
+        "displayName": "Dusk Sky (low)"
+      },
+      "horizon": {
+        "role": "neutral",
+        "displayName": "Horizon Ember"
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Designation", "purpose": "Aircraft type only." },
-      "softkey": { "displayName": "Soft-key", "purpose": "The single primary action." },
-      "label": { "displayName": "Label", "purpose": "Captions, parts, nav." },
-      "readout": { "displayName": "Readout", "purpose": "Changing numbers." }
+      "display": {
+        "displayName": "Designation",
+        "purpose": "Aircraft type only."
+      },
+      "softkey": {
+        "displayName": "Soft-key",
+        "purpose": "The single primary action."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Captions, parts, nav."
+      },
+      "readout": {
+        "displayName": "Readout",
+        "purpose": "Changing numbers."
+      }
     },
-    "shadows": [{ "name": "ink-shadow", "value": "0 1px 2px rgb(0 0 0 / 0.55)", "purpose": "Keeps green legible over bright metal." }],
-    "motion": [
-      { "name": "bracket-spread", "value": "180ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Soft-key brackets open on hover." },
-      { "name": "explode", "value": "1.8s sweep, easeInOutCubic per part, staggered over half the timeline", "purpose": "The signature disassembly." }
+    "shadows": [
+      {
+        "name": "ink-shadow",
+        "value": "0 1px 2px rgb(0 0 0 / 0.55)",
+        "purpose": "Keeps green legible over bright metal."
+      }
     ],
-    "breakpoints": [{ "name": "phone", "value": "640px" }]
+    "motion": [
+      {
+        "name": "bracket-spread",
+        "value": "180ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Soft-key brackets open on hover."
+      },
+      {
+        "name": "explode",
+        "value": "1.8s sweep, easeInOutCubic per part, staggered over half the timeline",
+        "purpose": "The signature disassembly."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "640px"
+      }
+    ]
   },
   "components": [
     {
@@ -34,20 +82,48 @@
     {
       "name": "Mode switch",
       "kind": "nav",
-      "description": "Text modes, 1px underline on current.",
-      "html": "<nav class=\"ds-modes\"><a aria-current=\"page\">Airframe</a><span>Cockpit <small>soon</small></span></nav>",
-      "css": ".ds-modes{display:flex;gap:20px;font:12px B612,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#6cff8f}.ds-modes a{border-bottom:1px solid #6cff8f;padding-bottom:4px}.ds-modes span{color:rgb(108 255 143/.22)}"
+      "description": "Text links; current mode 1px underline, other at 62%.",
+      "html": "<nav class=\"ds-modes\"><a href=\"#airframe\" aria-current=\"page\">Airframe</a><a href=\"#cockpit\">Cockpit</a></nav>",
+      "css": ".ds-modes{display:flex;gap:20px;font:12px B612,sans-serif;letter-spacing:.06em;text-transform:uppercase}.ds-modes a{color:rgb(108 255 143/.62);text-decoration:none;padding-bottom:4px;border-bottom:1px solid transparent}.ds-modes a:hover{color:#6cff8f}.ds-modes a[aria-current]{color:#6cff8f;border-bottom-color:#6cff8f}"
+    },
+    {
+      "name": "Heading tape",
+      "kind": "custom",
+      "description": "Flight-deck heading symbology; ticks slide with the look direction.",
+      "html": "<div class=\"ds-hdg\"><div class=\"ds-hdg-ticks\"></div><span>090</span></div>",
+      "css": ".ds-hdg{width:360px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#6cff8f;font:13px 'B612 Mono',monospace}.ds-hdg::before{content:'';border:5px solid transparent;border-top-color:#6cff8f;border-bottom-width:0}.ds-hdg-ticks{width:100%;height:12px;background:repeating-linear-gradient(90deg,rgb(108 255 143/.62) 0 1px,transparent 1px 40px) center bottom/auto 12px repeat-x,repeating-linear-gradient(90deg,rgb(108 255 143/.22) 0 1px,transparent 1px 8px) center bottom/auto 6px repeat-x;mask:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent)}"
     }
   ],
   "narrative": {
     "northStar": "The jet's own HUD",
     "overview": "Collimated phosphor symbology over a dusk sky; the aircraft leads, the interface lives on the edges.",
-    "keyCharacteristics": ["Ink-only green", "B612 cockpit face", "1px strokes and L-brackets", "No panels"],
-    "rules": [
-      { "name": "The Ink-Only Rule", "body": "Green is a line or a letter, never an area.", "section": "colors" },
-      { "name": "Three Brightnesses", "body": "100%, 62%, 22% of HUD green; nothing else.", "section": "colors" }
+    "keyCharacteristics": [
+      "Ink-only green",
+      "B612 cockpit face",
+      "1px strokes and L-brackets",
+      "No panels"
     ],
-    "dos": ["Keep the aircraft centred, symbology on the edges", "1px strokes everywhere", "Fixed-width changing numbers"],
-    "donts": ["No green fills, panels, blur or bloom", "No ghost 8s behind digits", "No invented performance figures"]
+    "rules": [
+      {
+        "name": "The Ink-Only Rule",
+        "body": "Green is a line or a letter, never an area.",
+        "section": "colors"
+      },
+      {
+        "name": "Three Brightnesses",
+        "body": "100%, 62%, 22% of HUD green; nothing else.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Keep the aircraft centred, symbology on the edges",
+      "1px strokes everywhere",
+      "Fixed-width changing numbers"
+    ],
+    "donts": [
+      "No green fills, panels, blur or bloom",
+      "No ghost 8s behind digits",
+      "No invented performance figures"
+    ]
   }
 }

@@ -92,8 +92,12 @@ Bracketed label: two 1px half-brackets that spread 4px on hover, invert to a gre
 A vertical range drawn as an altitude tape: 1px spine, major ticks every 10%, minor every 2%, a solid green pointer caret. Up = more separation. Step 1%.
 ### Designation Bracket
 Four 1px corner brackets that track the hovered (or tapped) part's projected bounds every frame, part name set beneath in 12px caps.
+### Heading Tape (flight-deck signature)
+Top-centre horizontal tape shown in Cockpit mode: 1px major ticks every 40px (10°), minor every 8px, a solid green caret above, three-digit B612 Mono heading beneath; slides as the visitor looks around. Edges fade out with a mask.
+### Legibility Scrim (flight deck only)
+Soft sky-0 fades (78% → 0) along the top 150px and bottom 130px, only in Cockpit mode, so green ink holds over the bright interior. It is a legibility device, not decoration; never a panel.
 ### Navigation
-Mode switch as text with a 1px underline for the current mode; unavailable modes at 22% with a small "soon".
+Mode switch as text links (`#airframe`, `#cockpit`); current mode full green with a 1px underline, the other at 62%, full green on hover.
 
 ## Do's and Don'ts
 ### Do:

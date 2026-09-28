@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js?v=5";
-import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=5";
+import { partOffset, stepT, framePull } from "./explode.js?v=6";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=6";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -203,13 +203,15 @@ function applyMode(next) {
 }
 
 const modeFromHash = () => (location.hash === "#cockpit" ? "cockpit" : "airframe");
+let fadeTimer = 0;
 function switchMode() {
-  const next = modeFromHash();
-  if (next === mode) return;
-  if (reduced) return applyMode(next);
+  // a quick back-and-forth cancels the pending switch; the hash at the end of the fade wins
+  clearTimeout(fadeTimer);
   const c = $("stage");
+  if (modeFromHash() === mode) return c.classList.remove("fading");
+  if (reduced) return applyMode(modeFromHash());
   c.classList.add("fading");
-  setTimeout(() => { applyMode(next); c.classList.remove("fading"); }, 250);
+  fadeTimer = setTimeout(() => { applyMode(modeFromHash()); c.classList.remove("fading"); }, 250);
 }
 addEventListener("hashchange", switchMode);
 
