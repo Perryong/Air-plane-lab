@@ -31,6 +31,7 @@ body {
 a { color: inherit; text-decoration-color: var(--hud-mid); text-underline-offset: 3px; }
 a:hover { text-decoration-color: var(--hud); }
 :focus-visible { outline: 1px solid var(--hud); outline-offset: 4px; }
+#stage:focus-visible { outline-offset: -6px; } /* full-viewport canvas: keep the ring on screen */
 
 #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 #stage:active { cursor: grabbing; }

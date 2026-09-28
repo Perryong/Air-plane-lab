@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js?v=6";
-import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=6";
+import { partOffset, stepT, framePull } from "./explode.js?v=7";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=7";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -217,19 +217,21 @@ addEventListener("hashchange", switchMode);
 
 // grab-the-world drag; arrow keys for keyboard users
 const cv = renderer.domElement;
+// one pointer drives the look; a second finger (pinch habit) is ignored instead of
+// making the view jump by the distance between the fingers
 cv.addEventListener("pointerdown", (e) => {
-  if (mode !== "cockpit") return;
-  cockpit.dragging = [e.clientX, e.clientY];
+  if (mode !== "cockpit" || cockpit.dragging || e.button > 0) return;
+  cockpit.dragging = { id: e.pointerId, x: e.clientX, y: e.clientY };
   try { cv.setPointerCapture(e.pointerId); } catch {}
 });
 cv.addEventListener("pointermove", (e) => {
-  if (mode !== "cockpit" || !cockpit.dragging) return;
-  const [x, y] = cockpit.dragging;
-  cockpit.target = dragToLook(cockpit.target, e.clientX - x, e.clientY - y, innerWidth);
-  cockpit.dragging = [e.clientX, e.clientY];
+  const d = cockpit.dragging;
+  if (mode !== "cockpit" || !d || e.pointerId !== d.id) return;
+  cockpit.target = dragToLook(cockpit.target, e.clientX - d.x, e.clientY - d.y, innerWidth);
+  d.x = e.clientX; d.y = e.clientY;
   $("hint").classList.add("gone");
 });
-const endDrag = () => (cockpit.dragging = null);
+const endDrag = (e) => { if (cockpit.dragging?.id === e.pointerId) cockpit.dragging = null; };
 cv.addEventListener("pointerup", endDrag);
 cv.addEventListener("pointercancel", endDrag);
 cv.addEventListener("keydown", (e) => {

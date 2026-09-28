@@ -1,0 +1,12 @@
+public/cockpit.glb
+
+Derived from "Boeing 757-200 Icelandair Cockpit" by VTX
+https://sketchfab.com/3d-models/boeing-757-200-icelandair-cockpit-1cb8f8109cb145849282ad703a652859
+Licensed under CC BY-NC-SA 4.0 — https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Changes: rotated to face +X, added an "eye_captain" marker node,
+recompressed (Draco geometry, WebP textures) by blender/build_cockpit.py and
+blender/compress.sh.
+
+This derived file is shared under the same license (CC BY-NC-SA 4.0).
+Non-commercial use only.
