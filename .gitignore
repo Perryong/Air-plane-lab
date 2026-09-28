@@ -6,3 +6,4 @@ blender/f16_raw.glb
 .impeccable/review/
 blender/src_cockpit/
 blender/cockpit_raw.glb
+__pycache__/
