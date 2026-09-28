@@ -4,3 +4,5 @@ blender/src/
 blender/f16_raw.glb
 .playwright-mcp/
 .impeccable/review/
+blender/src_cockpit/
+blender/cockpit_raw.glb
