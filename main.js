@@ -3,7 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js";
+import { partOffset, stepT, framePull } from "./explode.js?v=5";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=5";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -114,6 +115,7 @@ $("explode").addEventListener("input", (e) => {
 // hover (mouse) or tap (touch): designation bracket locks onto the part's screen-space bounds
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), box = new THREE.Box3();
 function pick(x, y) {
+  if (mode !== "airframe") { hovered = null; return; }
   ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
   ray.setFromCamera(ndc, camera);
   let o = ray.intersectObjects(parts, true)[0]?.object;
@@ -146,6 +148,98 @@ function drawLock() {
   lock.style.height = `${y1 - y0 + 12}px`;
 }
 
+// ---- cockpit mode: seated look-around from the captain's eye point -------
+const cockCam = new THREE.PerspectiveCamera(68, 1, 0.02, 200);
+cockCam.rotation.order = "YXZ";
+const cockpit = { scene: null, ready: null, look: [...START], target: [...START], dragging: null };
+let mode = "airframe";
+
+function loadCockpit() {
+  const s = $("cstatus");
+  s.hidden = false; s.classList.remove("error");
+  s.innerHTML = 'Acquiring flight deck <span class="num" data-ghost="888">0</span>%';
+  const num = s.querySelector(".num");
+  cockpit.ready = loader
+    .loadAsync("public/cockpit.glb", (e) => e.total && setNum(num, Math.round((e.loaded / e.total) * 100)))
+    .then((gltf) => {
+      const sc = new THREE.Scene();
+      // no background: the page's dusk sky shows through the windscreen
+      sc.environment = scene.environment;
+      sc.environmentIntensity = 0.8;
+      sc.add(new THREE.HemisphereLight(0xcfdcec, 0x2a2420, 1.4));
+      sc.add(gltf.scene);
+      const eye = gltf.scene.getObjectByName("eye_captain");
+      if (!eye) throw new Error("cockpit.glb has no eye_captain");
+      gltf.scene.updateMatrixWorld(true);
+      eye.getWorldPosition(cockCam.position);
+      cockpit.scene = sc;
+      s.hidden = true;
+    })
+    .catch((err) => {
+      cockpit.ready = null; // allow a retry on next entry
+      console.warn("cockpit.glb failed to load", err);
+      s.classList.add("error");
+      s.innerHTML = 'Couldn\'t load the flight deck. <a href="#airframe">Back to the airframe</a>';
+    });
+  return cockpit.ready;
+}
+
+const TITLES = {
+  airframe: ["F-16A", "Airframe · exploded view"],
+  cockpit: ["757-200", "Flight deck"],
+};
+
+function applyMode(next) {
+  mode = next;
+  document.body.classList.toggle("mode-cockpit", mode === "cockpit");
+  document.body.classList.toggle("mode-airframe", mode === "airframe");
+  for (const a of document.querySelectorAll(".modes a[data-mode]")) {
+    if (a.dataset.mode === mode) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  }
+  [$("title").textContent, $("subtitle").textContent] = TITLES[mode];
+  controls.enabled = mode === "airframe";
+  hovered = null;
+  if (mode === "cockpit" && !cockpit.ready) loadCockpit();
+}
+
+const modeFromHash = () => (location.hash === "#cockpit" ? "cockpit" : "airframe");
+function switchMode() {
+  const next = modeFromHash();
+  if (next === mode) return;
+  if (reduced) return applyMode(next);
+  const c = $("stage");
+  c.classList.add("fading");
+  setTimeout(() => { applyMode(next); c.classList.remove("fading"); }, 250);
+}
+addEventListener("hashchange", switchMode);
+
+// grab-the-world drag; arrow keys for keyboard users
+const cv = renderer.domElement;
+cv.addEventListener("pointerdown", (e) => {
+  if (mode !== "cockpit") return;
+  cockpit.dragging = [e.clientX, e.clientY];
+  try { cv.setPointerCapture(e.pointerId); } catch {}
+});
+cv.addEventListener("pointermove", (e) => {
+  if (mode !== "cockpit" || !cockpit.dragging) return;
+  const [x, y] = cockpit.dragging;
+  cockpit.target = dragToLook(cockpit.target, e.clientX - x, e.clientY - y, innerWidth);
+  cockpit.dragging = [e.clientX, e.clientY];
+  $("hint").classList.add("gone");
+});
+const endDrag = () => (cockpit.dragging = null);
+cv.addEventListener("pointerup", endDrag);
+cv.addEventListener("pointercancel", endDrag);
+cv.addEventListener("keydown", (e) => {
+  if (mode !== "cockpit") return;
+  const step = 0.12;
+  const k = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] }[e.key];
+  if (!k) return;
+  e.preventDefault();
+  cockpit.target = clampLook([cockpit.target[0] + k[0], cockpit.target[1] + k[1]]);
+  $("hint").classList.add("gone");
+});
+
 let pull = 1;
 function resize() {
   if (!innerWidth || !innerHeight) return; // hidden tab; next resize catches up
@@ -159,17 +253,39 @@ function resize() {
   camera.position.multiplyScalar(k / pull);
   pull = k;
   controls.update();
+  cockCam.aspect = camera.aspect;
+  cockCam.fov = camera.aspect < 0.8 ? 80 : 68;
+  cockCam.updateProjectionMatrix();
 }
 addEventListener("resize", resize);
 resize();
 
 const clock = new THREE.Clock();
+const ticks = document.querySelector(".heading-ticks");
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (mode === "cockpit") {
+    if (!cockpit.scene) return renderer.clear();
+    cockpit.look = stepLook(cockpit.look, cockpit.target, dt, { reduced });
+    cockCam.rotation.set(cockpit.look[1], -Math.PI / 2 + cockpit.look[0], 0);
+    const h = headingDeg(cockpit.look[0]);
+    setNum($("hdg"), String(h).padStart(3, "0"));
+    ticks.style.setProperty("--off", `${-h * 4}px`);
+    return renderer.render(cockpit.scene, cockCam);
+  }
   if (t !== target) { t = stepT(t, target, dt, { reduced }); apply(); }
   controls.update();
   renderer.render(scene, camera);
   drawLock();
 });
 
-window.__viewer = { ready, camera, get parts() { return parts; }, setT(v) { setTarget(v); t = v; apply(); } };
+window.__viewer = {
+  ready, camera, cockCam,
+  get parts() { return parts; },
+  get mode() { return mode; },
+  get cockpitReady() { return cockpit.ready; },
+  get look() { return cockpit.look; },
+  setT(v) { setTarget(v); t = v; apply(); },
+};
+
+applyMode(modeFromHash());

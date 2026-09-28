@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono&display=swap" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=5" />
   <script type="importmap">
   { "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -16,20 +16,27 @@
   } }
   </script>
 </head>
-<body>
-  <canvas id="stage" aria-label="3D model of an F-16A. Drag to orbit, scroll to zoom."></canvas>
+<body class="mode-airframe">
+  <canvas id="stage" tabindex="0" aria-label="3D view. Airframe: drag to orbit, scroll to zoom. Flight deck: drag or use arrow keys to look around."></canvas>
 
   <header class="hud-top">
-    <h1><span class="type">F-16A</span> <span class="sub">Airframe · exploded view</span></h1>
+    <h1><span class="type" id="title">F-16A</span> <span class="sub" id="subtitle">Airframe · exploded view</span></h1>
     <nav class="modes" aria-label="View mode">
-      <a aria-current="page">Airframe</a>
-      <span class="soon" aria-disabled="true">Cockpit <small>soon</small></span>
+      <a href="#airframe" data-mode="airframe">Airframe</a>
+      <a href="#cockpit" data-mode="cockpit">Cockpit</a>
     </nav>
   </header>
 
-  <p id="status" role="status" aria-live="polite">Acquiring airframe <span class="num" data-ghost="888">0</span>%</p>
+  <p id="status" class="status" role="status" aria-live="polite">Acquiring airframe <span class="num" data-ghost="888">0</span>%</p>
 
   <div id="lock" hidden aria-hidden="true"><span id="tip"></span></div>
+
+  <div id="heading" class="heading" aria-hidden="true">
+    <div class="heading-ticks"></div>
+    <span class="num" id="hdg" data-ghost="888">000</span>
+  </div>
+  <p id="hint" class="hint">Drag to look around</p>
+  <p id="cstatus" class="status" role="status" aria-live="polite" hidden></p>
 
   <label class="tape">
     <span class="tape-label">SEP</span>
@@ -42,7 +49,10 @@
       <span><span class="num" data-ghost="88">10</span> sections</span>
     </p>
     <button id="toggle" type="button" aria-pressed="false" disabled>Disassemble</button>
-    <p id="credit">Model: <a href="https://sketchfab.com/3d-models/f16a-8e318343bf174e8f955707df54cb1fa6" target="_blank" rel="noopener">F16A</a> by <a href="https://sketchfab.com/amf1re" target="_blank" rel="noopener">amf1re</a></p>
+    <p id="credit">
+      <span class="credit-airframe">Model: <a href="https://sketchfab.com/3d-models/f16a-8e318343bf174e8f955707df54cb1fa6" target="_blank" rel="noopener">F16A</a> by <a href="https://sketchfab.com/amf1re" target="_blank" rel="noopener">amf1re</a></span>
+      <span class="credit-cockpit"><a href="https://sketchfab.com/3d-models/boeing-757-200-icelandair-cockpit-1cb8f8109cb145849282ad703a652859" target="_blank" rel="noopener">Boeing 757-200 Icelandair Cockpit</a> by VTX · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA</a></span>
+    </p>
   </footer>
 
   <script>
@@ -53,6 +63,6 @@
       s.textContent = "Couldn't load the 3D viewer. Check your connection and reload the page.";
     };
   </script>
-  <script type="module" src="main.js" onerror="__loadFail()"></script>
+  <script type="module" src="main.js?v=5" onerror="__loadFail()"></script>
 </body>
 </html>
