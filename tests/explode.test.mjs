@@ -50,3 +50,16 @@ test("clamps", () => {
   assert.equal(stepT(0.99, 1, 1), 1);
   assert.equal(stepT(0.01, 0, 1), 0);
 });
+
+import { framePull } from "../explode.js";
+
+test("framePull: portrait pulls back, landscape stays", () => {
+  assert.equal(framePull(2), 1);
+  assert.ok(Math.abs(framePull(0.5) - 3.2) < 1e-9);
+});
+
+test("framePull: zero-size / hidden window never poisons the camera", () => {
+  assert.equal(framePull(NaN), 1);        // 0/0 when the tab starts hidden
+  assert.equal(framePull(Infinity), 1);   // w/0
+  assert.equal(framePull(0), 1);
+});

@@ -3,7 +3,7 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT } from "./explode.js";
+import { partOffset, stepT, framePull } from "./explode.js";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -148,12 +148,13 @@ function drawLock() {
 
 let pull = 1;
 function resize() {
+  if (!innerWidth || !innerHeight) return; // hidden tab; next resize catches up
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   // keep the exploded airframe in frame on portrait screens; rescale distance only,
   // so the visitor's orbit angle survives resizes (mobile URL bar, rotation)
-  const k = Math.max(1, 1.6 / camera.aspect);
+  const k = framePull(camera.aspect);
   controls.maxDistance = 40 * k; // otherwise the clamp undoes the pull-back
   camera.position.multiplyScalar(k / pull);
   pull = k;

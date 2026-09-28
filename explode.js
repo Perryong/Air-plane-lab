@@ -20,3 +20,10 @@ export function stepT(t, target, dt, { duration = 1.8, reduced = false } = {}) {
   const step = dt / duration;
   return target > t ? Math.min(target, t + step) : Math.max(target, t - step);
 }
+
+// Camera pull-back so the exploded airframe fits portrait screens. A hidden or
+// zero-size window gives NaN/Infinity aspects; fall back to 1 so the camera
+// position is never multiplied into NaN.
+export function framePull(aspect) {
+  return Number.isFinite(aspect) && aspect > 0 ? Math.max(1, 1.6 / aspect) : 1;
+}
