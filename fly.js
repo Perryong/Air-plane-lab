@@ -2,18 +2,21 @@
 // Three.js scene, flight effects, input and the Fly HUD.
 import * as THREE from "three";
 import {
-  CRUISE, forward, stepFlight, terrainHeight, makeCourse, hitGround,
+  forward, stepFlight, terrainHeight, makeCourse, hitGround,
   startState, respawnState, newRace, advanceRace, combineInput,
-} from "./flight.js?v=9";
+} from "./flight.js?v=10";
+export { PROFILES } from "./flight.js?v=10";
 
 const $ = (id) => document.getElementById(id);
-const BEST_KEY = "f16-ring-best";
-const readBest = () => { try { const v = parseFloat(localStorage.getItem(BEST_KEY)); return v > 0 ? v : null; } catch { return null; } };
-const writeBest = (v) => { try { localStorage.setItem(BEST_KEY, String(v)); } catch {} };
+const readBest = (key) => { try { const v = parseFloat(localStorage.getItem(key)); return v > 0 ? v : null; } catch { return null; } };
+const writeBest = (key, v) => { try { localStorage.setItem(key, String(v)); } catch {} };
 const fmt = (s) => (s == null ? "--:--.-" : `${String(Math.floor(s / 60)).padStart(2, "0")}:${(s % 60).toFixed(1).padStart(4, "0")}`);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-export function createFly({ renderer, f16, env, reduced }) {
+// aircraft = { id, root, profile, kind: "jet"|"prop", scale, courseScale, ringScale, bestKey }
+export function createFly({ renderer, env, reduced, aircraft }) {
+  const P = aircraft.profile, jetKind = aircraft.kind === "jet";
+  const BEST = aircraft.bestKey;
   const scene = new THREE.Scene();
   scene.environment = env;
   scene.environmentIntensity = 0.6;
@@ -61,7 +64,7 @@ export function createFly({ renderer, f16, env, reduced }) {
   }
 
   // ---- rings --------------------------------------------------------------
-  const course = makeCourse();
+  const course = makeCourse(aircraft.courseScale, aircraft.ringScale);
   const ringGeo = new THREE.TorusGeometry(course[0].radius, 1.4, 12, 56);
   const rings = course.map((r) => {
     const m = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x6cff8f, transparent: true, opacity: 0.35, fog: false }));
@@ -74,30 +77,47 @@ export function createFly({ renderer, f16, env, reduced }) {
   // ---- jet: yaw > pitch > bank groups ------------------------------------
   const yawG = new THREE.Group(), pitchG = new THREE.Group(), bankG = new THREE.Group();
   yawG.add(pitchG); pitchG.add(bankG); scene.add(yawG);
-  const model = f16.clone(true);
+  const model = aircraft.root.clone(true);
   model.traverse((o) => { if (o.userData.rest) o.position.copy(o.userData.rest); });
+  model.scale.setScalar(aircraft.scale);
   bankG.add(model);
+  scene.updateMatrixWorld(true);
   const partBox = (name) => new THREE.Box3().setFromObject(model.getObjectByName(name));
-  const nozzle = partBox("engine_nozzle"), wl = partBox("wing_L"), wr = partBox("wing_R");
-  const tipL = new THREE.Vector3(wl.getCenter(new THREE.Vector3()).x, wl.max.y, wl.min.z); // left = -Z
+  // wingtips (left = -Z): the jet has two wing parts, the Cessna one high wing
+  const wl = partBox(jetKind ? "wing_L" : "wing"), wr = partBox(jetKind ? "wing_R" : "wing");
+  const tipL = new THREE.Vector3(wl.getCenter(new THREE.Vector3()).x, wl.max.y, wl.min.z);
   const tipR = new THREE.Vector3(wr.getCenter(new THREE.Vector3()).x, wr.max.y, wr.max.z);
 
-  // afterburner: additive outer flame, hot core, orange light
-  const burnerG = new THREE.Group();
-  burnerG.position.set(nozzle.min.x + 0.2, (nozzle.min.y + nozzle.max.y) / 2, (nozzle.min.z + nozzle.max.z) / 2);
-  const nozR = (nozzle.max.z - nozzle.min.z) * 0.38;
-  const flameMesh = (r, color) => {
-    const geo = new THREE.ConeGeometry(r, 1, 24, 1, true).translate(0, 0.5, 0);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
-    m.rotation.z = Math.PI / 2; // cone apex +Y -> -X (behind the nozzle)
-    burnerG.add(m);
-    return m;
-  };
-  const flame = flameMesh(nozR, 0xff8a3d), core = flameMesh(nozR * 0.55, 0xcfe6ff);
-  const glow = new THREE.PointLight(0xff7a2a, 0, 40, 2);
-  burnerG.add(glow);
-  bankG.add(burnerG);
-
+  // jet: afterburner (additive outer flame, hot core, orange light)
+  // prop: spinning propeller + translucent disc, elevator that follows pitch input
+  let flame, core, glow, prop, disc, elevator;
+  if (jetKind) {
+    const nozzle = partBox("engine_nozzle");
+    const burnerG = new THREE.Group();
+    burnerG.position.set(nozzle.min.x + 0.2, (nozzle.min.y + nozzle.max.y) / 2, (nozzle.min.z + nozzle.max.z) / 2);
+    const nozR = (nozzle.max.z - nozzle.min.z) * 0.38;
+    const flameMesh = (r, color) => {
+      const geo = new THREE.ConeGeometry(r, 1, 24, 1, true).translate(0, 0.5, 0);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+      m.rotation.z = Math.PI / 2; // cone apex +Y -> -X (behind the nozzle)
+      burnerG.add(m);
+      return m;
+    };
+    flame = flameMesh(nozR, 0xff8a3d); core = flameMesh(nozR * 0.55, 0xcfe6ff);
+    glow = new THREE.PointLight(0xff7a2a, 0, 40, 2);
+    burnerG.add(glow);
+    bankG.add(burnerG);
+  } else {
+    prop = model.getObjectByName("propeller");
+    elevator = model.getObjectByName("elevator");
+    const pb = new THREE.Box3().setFromObject(prop), size = pb.getSize(new THREE.Vector3());
+    disc = new THREE.Mesh(
+      new THREE.CircleGeometry(Math.max(size.y, size.z) / 2 / aircraft.scale, 48),
+      new THREE.MeshBasicMaterial({ color: 0xd8dde2, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    disc.rotation.y = Math.PI / 2; // face along the nose axis
+    prop.add(disc);
+  }
   // wingtip vapour trails: fading line strips
   const N = 48;
   const makeTrail = () => {
@@ -125,15 +145,16 @@ export function createFly({ renderer, f16, env, reduced }) {
   camera.add(streaks);
 
   // ---- state ----------------------------------------------------------------
-  let jet = startState(course), race = newRace(), best = readBest();
-  let paused = false, active = false, crashT = 0, bankRate = 0, trailOp = 0, flameLen = 0, t = 0;
+  let jet = startState(course, P), race = newRace(), best = readBest(BEST);
+  let paused = false, active = false, crashT = 0, bankRate = 0, trailOp = 0, flameLen = 0, t = 0, rpm = 0, elev = 0;
+  const CAM = jetKind ? { back: 26, up: 7 } : { back: 16, up: 5 };
   const keys = new Set();
   let touch = { pitch: 0, roll: 0, burner: false };
   const camPos = new THREE.Vector3(), look = new THREE.Vector3(), tmp = new THREE.Vector3();
 
   function placeCamera(snap) {
     const [fx, fy, fz] = forward(jet.yaw, jet.pitch);
-    const want = tmp.set(jet.x - fx * 26, jet.y - fy * 26 + 7, jet.z - fz * 26);
+    const want = tmp.set(jet.x - fx * CAM.back, jet.y - fy * CAM.back + CAM.up, jet.z - fz * CAM.back);
     if (snap) camPos.copy(want); else camPos.lerp(want, 1 - Math.exp(-lastDt * 5));
     camera.position.copy(camPos);
     look.set(jet.x + fx * 30, jet.y + fy * 30 + 2, jet.z + fz * 30);
@@ -149,14 +170,14 @@ export function createFly({ renderer, f16, env, reduced }) {
 
   function start() { if (!race.started) race = { ...race, started: true }; paused = false; hud(); }
   function restart() {
-    jet = startState(course); race = newRace(); crashT = 0; paused = false;
+    jet = startState(course, P); race = newRace(); crashT = 0; paused = false;
     placeCamera(true); hud();
   }
 
   // ---- HUD (Fly mode DOM) ---------------------------------------------------
   const el = { spd: $("spd"), alt: $("alt"), ring: $("ring"), time: $("ftime"), best: $("fbest"), burner: $("burner"), start: $("flystart"), end: $("flyend"), endTime: $("fendtime"), endBest: $("fendbest"), crash: $("flycrash"), pause: $("flypause") };
   function hud() {
-    el.spd.textContent = String(Math.round(jet.speed * 5.4)).padStart(3, "0"); // u/s → kt (1 u ≈ 1.5 m)
+    el.spd.textContent = String(Math.round(jet.speed * 2.92)).padStart(3, "0"); // u/s → kt (1 u ≈ 1.5 m)
     el.alt.textContent = String(Math.max(0, Math.round((jet.y - terrainHeight(jet.x, jet.z)) * 4.9))).padStart(4, "0"); // ft AGL
     el.ring.textContent = `${String(Math.min(race.next + 1, course.length)).padStart(2, "0")}/${course.length}`;
     el.time.textContent = fmt(race.time);
@@ -180,8 +201,9 @@ export function createFly({ renderer, f16, env, reduced }) {
   });
   addEventListener("keyup", (e) => keys.delete(e.key.toLowerCase()));
   addEventListener("blur", () => clearInput());
-  $("flyagain").addEventListener("click", () => { restart(); start(); });
-  el.start.addEventListener("click", start);
+  // Fly HUD DOM is shared by one game per aircraft: only the active game reacts
+  $("flyagain").addEventListener("click", () => { if (active) { restart(); start(); } });
+  el.start.addEventListener("click", () => { if (active) start(); });
 
   // touch: left stick (pitch/roll), right AB hold
   const stick = $("stick"), knob = stick.querySelector(".knob"), ab = $("ab");
@@ -193,14 +215,14 @@ export function createFly({ renderer, f16, env, reduced }) {
     knob.style.translate = `${dx * R * 0.6}px ${dy * R * 0.6}px`;
   };
   stick.addEventListener("pointerdown", (e) => {
-    if (stickId !== null) return;
+    if (!active || stickId !== null) return;
     stickId = e.pointerId; try { stick.setPointerCapture(e.pointerId); } catch {} stickMove(e); start();
   });
   stick.addEventListener("pointermove", (e) => { if (e.pointerId === stickId) stickMove(e); });
   const stickEnd = (e) => { if (e.pointerId !== stickId) return; stickId = null; touch = { ...touch, roll: 0, pitch: 0 }; knob.style.translate = "0 0"; };
   stick.addEventListener("pointerup", stickEnd);
   stick.addEventListener("pointercancel", stickEnd);
-  ab.addEventListener("pointerdown", (e) => { try { ab.setPointerCapture(e.pointerId); } catch {} touch = { ...touch, burner: true }; start(); });
+  ab.addEventListener("pointerdown", (e) => { if (!active) return; try { ab.setPointerCapture(e.pointerId); } catch {} touch = { ...touch, burner: true }; start(); });
   const abEnd = () => (touch = { ...touch, burner: false });
   ab.addEventListener("pointerup", abEnd);
   ab.addEventListener("pointercancel", abEnd);
@@ -226,13 +248,13 @@ export function createFly({ renderer, f16, env, reduced }) {
     const flying = race.started && !paused;
     if (flying) {
       const prev = jet;
-      jet = stepFlight(jet, race.finished ? {} : inp, dt);
+      jet = stepFlight(jet, race.finished ? {} : inp, dt, P);
       bankRate = (jet.bank - prev.bank) / dt;
       if (!race.finished) {
         const was = race.finished;
         race = advanceRace(race, prev, jet, dt, course);
-        if (race.finished && !was && (best == null || race.time < best)) { best = race.time; writeBest(best); }
-        if (hitGround(jet)) { jet = respawnState(course, race.next); crashT = 1.6; placeCamera(true); }
+        if (race.finished && !was && (best == null || race.time < best)) { best = race.time; writeBest(BEST, best); }
+        if (hitGround(jet)) { jet = respawnState(course, race.next, P); crashT = 1.6; placeCamera(true); }
       } else if (hitGround(jet)) jet = { ...jet, pitch: Math.abs(jet.pitch) }; // after the finish, don't fly into the ground
     }
     crashT = Math.max(0, crashT - dt);
@@ -250,29 +272,40 @@ export function createFly({ renderer, f16, env, reduced }) {
       m.scale.setScalar(i === race.next && !reduced ? 1 + 0.05 * Math.sin(t * 5) : 1);
     });
 
-    // afterburner
-    const flicker = reduced ? 0 : Math.sin(t * 47) * 0.5 + Math.sin(t * 31) * 0.5;
-    flameLen = 1.5 + 7 * jet.burner + (flying ? 1.2 : 0.4) + 0.8 * flicker * (0.3 + jet.burner);
-    flame.scale.set(1, flameLen, 1);
-    core.scale.set(1, flameLen * 0.55, 1);
-    flame.material.opacity = 0.25 + 0.6 * jet.burner;
-    core.material.opacity = 0.4 + 0.5 * jet.burner;
-    glow.intensity = 30 + 220 * jet.burner;
+    if (jetKind) {
+      // afterburner
+      const flicker = reduced ? 0 : Math.sin(t * 47) * 0.5 + Math.sin(t * 31) * 0.5;
+      flameLen = 1.5 + 7 * jet.burner + (flying ? 1.2 : 0.4) + 0.8 * flicker * (0.3 + jet.burner);
+      flame.scale.set(1, flameLen, 1);
+      core.scale.set(1, flameLen * 0.55, 1);
+      flame.material.opacity = 0.25 + 0.6 * jet.burner;
+      core.material.opacity = 0.4 + 0.5 * jet.burner;
+      glow.intensity = 30 + 220 * jet.burner;
+    } else {
+      // propeller spins up with throttle; the disc stands in for motion blur
+      rpm = flying ? 22 + 58 * jet.burner : 9;
+      prop.rotation.x += rpm * dt;
+      disc.material.opacity = clamp((rpm - 15) / 60, 0, 1) * 0.35;
+      // elevator trailing edge up to climb (hinge axis = span, +Z)
+      elev += (-(flying && !race.finished ? inp.pitch : 0) * 0.35 - elev) * (1 - Math.exp(-dt * 10));
+      elevator.rotation.z = elev;
+    }
 
     // vapour trails
-    const pull = (Math.abs(inp.pitch) + Math.abs(bankRate) * 0.6) * clamp((jet.speed - 60) / 60, 0, 1);
+    const pull = (Math.abs(inp.pitch) + Math.abs(bankRate) * 0.6) * clamp((jet.speed - P.cruise * 0.85) / (P.cruise * 0.85), 0, 1) * (jetKind ? 1 : 0.6);
     trailOp += (clamp(pull, 0, 1) - trailOp) * (1 - Math.exp(-dt * 6));
     pushTrail(trails[0], tipL); pushTrail(trails[1], tipR);
     for (const tr of trails) tr.material.opacity = flying ? trailOp * 0.8 : 0;
 
     // camera: follow, FOV with speed, burner shake
     placeCamera(false);
-    camera.fov = 60 + 18 * clamp((jet.speed - CRUISE) / 60, 0, 1);
+    camera.fov = 60 + 18 * clamp((jet.speed - P.cruise) / (P.max - P.cruise), 0, 1);
     if (!reduced && flying) camera.position.addScaledVector(camera.up, Math.sin(t * 61) * 0.18 * jet.burner).x += Math.sin(t * 53) * 0.18 * jet.burner;
     camera.updateProjectionMatrix();
 
     // speed streaks
-    const sOp = reduced || !flying ? 0 : clamp((jet.speed - 100) / 40, 0, 1) * 0.5;
+    const fast = P.cruise + (P.max - P.cruise) * 0.5;
+    const sOp = reduced || !flying ? 0 : clamp((jet.speed - fast) / (P.max - fast), 0, 1) * 0.5;
     streaks.material.opacity = sOp;
     if (sOp > 0) {
       const len = jet.speed * 0.05;
@@ -298,8 +331,10 @@ export function createFly({ renderer, f16, env, reduced }) {
     let x = mv.x, y = mv.y;
     const behind = mv.z > 1;
     if (behind) { x = -x; y = -y; }
-    const off = behind || Math.abs(x) > 0.92 || Math.abs(y) > 0.86;
-    if (off) { const k = Math.max(Math.abs(x) / 0.92, Math.abs(y) / 0.86); x /= k; y /= k; }
+    // keep the edge marker clear of the header (top) and throttle/credit band (bottom)
+    const yMax = y > 0 ? 0.7 : 0.72;
+    const off = behind || Math.abs(x) > 0.92 || Math.abs(y) > yMax;
+    if (off) { const k = Math.max(Math.abs(x) / 0.92, Math.abs(y) / yMax); x /= k; y /= k; }
     const d = camera.position.distanceTo(edge.set(r.x, r.y, r.z));
     const px = off ? 22 : clamp((r.radius / (d * Math.tan((camera.fov * Math.PI) / 360))) * innerHeight, 22, innerHeight * 0.6);
     mark.hidden = false;
@@ -310,7 +345,16 @@ export function createFly({ renderer, f16, env, reduced }) {
   }
 
   function resize(aspect) { camera.aspect = aspect; camera.updateProjectionMatrix(); }
-  function setActive(on) { active = on; if (!on) { paused = race.started && !race.finished ? true : paused; clearInput(); hud(); } }
+  function setActive(on) {
+    active = on;
+    if (on) {
+      el.burner.querySelector("span").textContent = jetKind ? "AB" : "THR";
+      $("ab").textContent = jetKind ? "AB" : "THR";
+      $("ab").setAttribute("aria-label", jetKind ? "Afterburner (hold)" : "Full throttle (hold)");
+      document.querySelector(".legend dd:nth-of-type(4)").textContent = jetKind ? "Afterburner" : "Full throttle";
+      hud();
+    } else { paused = race.started && !race.finished ? true : paused; clearInput(); }
+  }
 
   placeCamera(true);
   hud();
@@ -321,6 +365,7 @@ export function createFly({ renderer, f16, env, reduced }) {
     debug: {
       get jet() { return jet; }, get race() { return race; }, get course() { return course; },
       get paused() { return paused; }, get flame() { return flameLen; }, get trail() { return trailOp; },
+      get rpm() { return rpm; }, get elevator() { return elev; },
       get streaks() { return streaks.material.opacity; }, get camera() { return camera; },
       setJet(s) { jet = { ...jet, ...s }; placeCamera(true); },
     },
