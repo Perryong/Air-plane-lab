@@ -26,6 +26,7 @@ EXPLODE = {
     "tail_fin": ((0, 0, 1), 2.4), "stabilizers": ((-1, 0, 0), 2.2),
 }
 FLAP_COMPONENTS = {"47", "49", "50", "52", "53", "55", "56", "57", "58", "59"}
+WING_COMPONENTS = {"48", "62", "63", "64", "65", "66", "67", "68"}  # spoilers / upper-surface panels
 
 
 def classify(o):
@@ -43,6 +44,7 @@ def classify(o):
     if comp and comp.group(1) == "81": return "wing_R"
     if n.startswith("Group_029"): return "wing_L"
     if comp and comp.group(1) in FLAP_COMPONENTS: return "flaps_" + side
+    if comp and comp.group(1) in WING_COMPONENTS: return "wing_" + side
     if "Generic Turbofan Fan" in n or "Material6" in mats: return "fan_" + side
     if 7.5 < abs(c.x) < 12 and -13 < c.y < -1 and c.z < 5.6: return "engine_" + side  # nacelle, pylon
     if c.y < -28 and c.z < 3.5: return "nose_gear"

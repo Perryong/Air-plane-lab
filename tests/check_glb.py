@@ -20,6 +20,16 @@ def load(path):
     assert kind == b"JSON"
     return json.loads(b[20:20+n])
 
+def lateral_half_width(g, node):
+    # glTF z = sideways; POSITION accessors carry min/max even when Draco-compressed
+    tz = node.get("translation", [0, 0, 0])[2]
+    zs = []
+    for prim in g["meshes"][node["mesh"]]["primitives"]:
+        acc = g["accessors"][prim["attributes"]["POSITION"]]
+        zs += [acc["min"][2] + tz, acc["max"][2] + tz]
+    return max(abs(v) for v in zs)
+
+
 def check(g, kind="f16"):
     PARTS = AIRCRAFT[kind]
     scene = g["scenes"][g.get("scene", 0)]
@@ -41,6 +51,9 @@ def check(g, kind="f16"):
     assert sorted(orders) == list(range(len(PARTS))), "order must be 0..n-1"
     if kind != "b777":  # the 777 is colour materials only (no textures in the source)
         assert g.get("images"), "textures not embedded"
+    if kind == "b777":  # wing surfaces (spoilers) must not be left on the fuselage
+        half = lateral_half_width(g, nodes["fuselage"])
+        assert half < 2.7, f"fuselage spans ±{half:.2f} u sideways: wing panels were classified as fuselage"
     for part, child in CHILDREN.get(kind, {}).items():
         kids = [g["nodes"][i].get("name") for i in nodes[part].get("children", [])]
         assert child in kids, f"{part} has no child node {child!r}"
