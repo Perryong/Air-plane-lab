@@ -93,3 +93,39 @@ test("advanceRace: timer runs only while racing; rings in order; finish freezes 
 test("combineInput sums and clamps; burner ORs", () => {
   assert.deepEqual(F.combineInput({ pitch: 1, roll: -0.4 }, { pitch: 0.7, roll: -0.8, burner: true }), { pitch: 1, roll: -1, burner: true });
 });
+
+// ---- aircraft profiles -------------------------------------------------------
+const flyP = (s, input, secs, p, dt = 1 / 60) => { for (let t = 0; t < secs; t += dt) s = F.stepFlight(s, input, dt, p); return s; };
+const C = () => F.PROFILES.c172;
+
+test("C172: cruise ≈32 u/s, full throttle ≈44 u/s", () => {
+  const s0 = { ...base(), speed: 32 };
+  assert.ok(Math.abs(flyP(s0, {}, 8, C()).speed - 32) < 1.5);
+  assert.ok(Math.abs(flyP(s0, { burner: true }, 12, C()).speed - 44) < 1.5);
+});
+
+test("C172: bank limited to 45° and turns gentler than the F-16", () => {
+  const c = flyP({ ...base(), speed: 32 }, { roll: 1 }, 2, C());
+  assert.ok(c.bank <= (45 * Math.PI) / 180 + 1e-9 && c.bank > 0.6);
+  const f = flyP(base(), { roll: 1 }, 2, F.PROFILES.f16);
+  assert.ok(Math.abs(c.yaw) < Math.abs(f.yaw));
+});
+
+test("default profile is the F-16 (existing behaviour unchanged)", () => {
+  assert.deepEqual(F.stepFlight(base(), { roll: 0.3 }, 0.1), F.stepFlight(base(), { roll: 0.3 }, 0.1, F.PROFILES.f16));
+});
+
+test("scaled course for the C172: 12 rings, above terrain, smaller rings", () => {
+  const c = F.makeCourse(0.5, 0.7);
+  assert.equal(c.length, F.RING_COUNT);
+  for (const r of c) assert.ok(r.y - F.terrainHeight(r.x, r.z) >= 35 && Math.abs(r.radius - F.RING_RADIUS * 0.7) < 1e-9);
+  const full = F.makeCourse();
+  assert.ok(Math.hypot(c[3].x, c[3].z) < Math.hypot(full[3].x, full[3].z) * 0.6);
+});
+
+test("start/respawn use the profile's cruise speed", () => {
+  const c = F.makeCourse(0.5, 0.7);
+  assert.equal(F.startState(c, C()).speed, 32);
+  assert.equal(F.respawnState(c, 2, C()).speed, 32);
+  assert.equal(F.startState(c).speed, F.CRUISE);
+});
