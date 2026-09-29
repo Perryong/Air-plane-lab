@@ -129,3 +129,21 @@ test("start/respawn use the profile's cruise speed", () => {
   assert.equal(F.respawnState(c, 2, C()).speed, 32);
   assert.equal(F.startState(c).speed, F.CRUISE);
 });
+
+// ---- Boeing 777 --------------------------------------------------------------
+test("777: cruise ≈55, TO/GA thrust ≈72, bank ≤30°, gentlest turn", () => {
+  const B = F.PROFILES.b777;
+  const s0 = { ...base(), speed: 55 };
+  assert.ok(Math.abs(flyP(s0, {}, 8, B).speed - 55) < 1.5);
+  assert.ok(Math.abs(flyP(s0, { burner: true }, 12, B).speed - 72) < 1.5);
+  const b = flyP(s0, { roll: 1 }, 2, B);
+  assert.ok(b.bank <= (30 * Math.PI) / 180 + 1e-9 && b.bank > 0.4);
+  const c = flyP({ ...base(), speed: 32 }, { roll: 1 }, 2, F.PROFILES.c172);
+  assert.ok(Math.abs(b.yaw) < Math.abs(c.yaw));
+});
+
+test("777 course: wider and with bigger rings, still above terrain", () => {
+  const c = F.makeCourse(1.4, 2.5);
+  assert.equal(c.length, F.RING_COUNT);
+  for (const r of c) assert.ok(r.y - F.terrainHeight(r.x, r.z) >= 35 && Math.abs(r.radius - F.RING_RADIUS * 2.5) < 1e-9);
+});

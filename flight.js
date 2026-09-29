@@ -7,6 +7,7 @@ const PITCH_MAX = deg(75);
 export const PROFILES = {
   f16: { cruise: CRUISE, max: BURNER, turn: 1.4, pitchRate: 1.1, bankMax: deg(70) },
   c172: { cruise: 32, max: 44, turn: 1.0, pitchRate: 0.8, bankMax: deg(45) },
+  b777: { cruise: 55, max: 72, turn: 0.55, pitchRate: 0.5, bankMax: deg(30) },
 };
 
 export const forward = (yaw, pitch) => [Math.cos(pitch) * Math.cos(yaw), Math.sin(pitch), -Math.cos(pitch) * Math.sin(yaw)];
