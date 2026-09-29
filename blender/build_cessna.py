@@ -37,8 +37,8 @@ ORDER = ["propeller", "cowling", "door_L", "door_R", "windows", "struts", "wing"
 EXPLODE = {
     "fuselage": ((0, 0, -1), 0.0), "wing": ((0, 0, 1), 3.2), "struts": ((0, 0, 1), 1.7),
     "propeller": ((1, 0, 0), 3.2), "cowling": ((1, 0, 0), 1.7), "windows": ((0, 0, 1), 1.6),
-    "door_L": ((0, 1, 0), 2.6), "door_R": ((0, -1, 0), 2.6), "interior": ((0, 0, -1), 2.2),
-    "main_gear": ((0, 0, -1), 4.2), "nose_gear": ((0, 0, -1), 4.2), "tail": ((-1, 0, 0), 3.0),
+    "door_L": ((0, 1, 0), 2.6), "door_R": ((0, -1, 0), 2.6), "interior": ((0, 0, -1), 1.9),
+    "main_gear": ((0, 0, -1), 3.3), "nose_gear": ((0, 0, -1), 3.3), "tail": ((-1, 0, 0), 3.0),
 }
 
 base = lambda name: re.sub(r"\.\d{3}$", "", name).rsplit("_", 1)[0]

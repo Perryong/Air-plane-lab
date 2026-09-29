@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono&display=swap" />
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c1218'/%3E%3Cpath d='M5 11V5h6M21 5h6v6M27 21v6h-6M11 27H5v-6' fill='none' stroke='%236cff8f' stroke-width='2'/%3E%3Cpath d='M16 8v16M9 16h14' stroke='%236cff8f' stroke-width='2'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="style.css?v=9" />
+  <link rel="stylesheet" href="style.css?v=10" />
   <script type="importmap">
   { "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
@@ -17,11 +17,17 @@
   } }
   </script>
 </head>
-<body class="mode-airframe">
+<body class="mode-airframe" data-plane="f16">
   <canvas id="stage" tabindex="0" aria-label="3D view. Airframe: drag to orbit, scroll to zoom. Flight deck: drag or use arrow keys to look around."></canvas>
 
   <header class="hud-top">
-    <h1><span class="type" id="title">F-16A</span> <span class="sub" id="subtitle">Airframe · exploded view</span></h1>
+    <div class="titleblock">
+      <h1><span class="type" id="title">F-16A</span> <span class="sub" id="subtitle">Airframe · exploded view</span></h1>
+      <nav class="planes" aria-label="Aircraft">
+        <a href="#airframe" data-plane="f16" aria-current="true">F-16A</a>
+        <a href="#airframe/c172" data-plane="c172">C172</a>
+      </nav>
+    </div>
     <nav class="modes" aria-label="View mode">
       <a href="#airframe" data-mode="airframe">Airframe</a>
       <a href="#cockpit" data-mode="cockpit">Cockpit</a>
@@ -84,11 +90,12 @@
   <footer class="hud-bottom">
     <p class="readout" aria-hidden="true">
       <span>SEP <span class="num" id="sep" data-ghost="888">0</span>%</span>
-      <span><span class="num" data-ghost="88">10</span> sections</span>
+      <span><span class="num" id="sections" data-ghost="88">10</span> sections</span>
     </p>
     <button id="toggle" type="button" aria-pressed="false" disabled>Disassemble</button>
     <p id="credit">
       <span class="credit-airframe">Model: <a href="https://sketchfab.com/3d-models/f16a-8e318343bf174e8f955707df54cb1fa6" target="_blank" rel="noopener">F16A</a> by <a href="https://sketchfab.com/amf1re" target="_blank" rel="noopener">amf1re</a></span>
+      <span class="credit-c172">Model: <a href="https://sketchfab.com/3d-models/free-cessna-172sp-c9cadc2f026946da8cf9715a683739e9" target="_blank" rel="noopener">FREE Cessna 172SP</a> by <a href="https://sketchfab.com/NLM-Group" target="_blank" rel="noopener">NLM</a>, modified · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></span>
       <span class="credit-cockpit"><a href="https://sketchfab.com/3d-models/boeing-757-200-icelandair-cockpit-1cb8f8109cb145849282ad703a652859" target="_blank" rel="noopener">Boeing 757-200 Icelandair Cockpit</a> by <a href="https://sketchfab.com/VTX" target="_blank" rel="noopener">VTX</a>, modified · <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a></span>
     </p>
   </footer>
@@ -101,6 +108,6 @@
       s.textContent = "Couldn't load the 3D viewer. Check your connection and reload the page.";
     };
   </script>
-  <script type="module" src="main.js?v=9" onerror="__loadFail()"></script>
+  <script type="module" src="main.js?v=10" onerror="__loadFail()"></script>
 </body>
 </html>

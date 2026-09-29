@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js?v=9";
-import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=9";
+import { partOffset, stepT, framePull } from "./explode.js?v=10";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=10";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -60,7 +60,14 @@ floor.position.y = -3.4;
 floor.receiveShadow = true;
 scene.add(floor);
 
-let parts = [], t = 0, target = 0, hovered = null, airframeRoot = null;
+let parts = [], t = 0, target = 0, hovered = null;
+// aircraft share one explode viewer: each GLB carries its own part extras
+const AIRCRAFT = {
+  f16: { glb: "public/f16.glb", name: "F-16A" },
+  c172: { glb: "public/cessna.glb", name: "C172" },
+};
+const planes = {}; // id -> Promise<{ root, parts }>
+let plane = "f16", shown = null, mode = "airframe";
 const tmp = new THREE.Vector3();
 
 function apply() {
@@ -84,26 +91,61 @@ const draco = new DRACOLoader().setDecoderPath("https://cdn.jsdelivr.net/npm/thr
 const loader = new GLTFLoader().setDRACOLoader(draco);
 const pct = $("status").querySelector(".num");
 
-const ready = loader
-  .loadAsync("public/f16.glb", (e) => e.total && setNum(pct, Math.round((e.loaded / e.total) * 100)))
-  .then((gltf) => {
-    const root = gltf.scene;
-    parts = root.children.filter((c) => Array.isArray(c.userData.explode_dir));
-    for (const p of parts) {
-      p.userData.rest = p.position.clone();
-      p.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
-    }
+function loadAirframe(id) {
+  if (planes[id]) return planes[id];
+  const st = $("status");
+  st.hidden = false; st.classList.remove("error");
+  st.innerHTML = `Acquiring ${AIRCRAFT[id].name} <span class="num" data-ghost="888">0</span>%`;
+  const num = st.querySelector(".num");
+  planes[id] = loader
+    .loadAsync(AIRCRAFT[id].glb, (e) => e.total && setNum(num, Math.round((e.loaded / e.total) * 100)))
+    .then((gltf) => {
+      const root = gltf.scene;
+      const list = root.children.filter((c) => Array.isArray(c.userData.explode_dir));
+      for (const p of list) {
+        p.userData.rest = p.position.clone();
+        p.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+      }
+      return { root, parts: list };
+    })
+    .catch((err) => {
+      delete planes[id]; // allow a retry
+      console.warn(`${AIRCRAFT[id].glb} failed to load`, err);
+      throw err;
+    });
+  return planes[id];
+}
+
+// show one aircraft in the airframe viewer; a switch always starts assembled
+function showAircraft(id) {
+  plane = id;
+  document.body.dataset.plane = id;
+  for (const a of document.querySelectorAll(".planes a[data-plane]")) {
+    if (a.dataset.plane === id) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+  }
+  updateTitle();
+  const st = $("status");
+  return loadAirframe(id).then(({ root, parts: list }) => {
+    if (plane !== id) return; // user switched again while this loaded
+    if (shown && shown !== root) scene.remove(shown);
     scene.add(root);
-    airframeRoot = root;
-    $("status").hidden = true;
+    shown = root;
+    parts = list;
+    hovered = null;
+    t = 0; setTarget(0);
+    setNum($("sections"), list.length);
+    st.hidden = true;
     $("toggle").disabled = $("explode").disabled = false;
     apply();
-  })
-  .catch((err) => {
-    $("status").classList.add("error");
-    $("status").textContent = "Couldn't load the aircraft model. Check your connection and reload the page.";
-    console.warn("f16.glb failed to load", err);
+  }).catch(() => {
+    if (plane !== id) return;
+    st.hidden = false; st.classList.add("error");
+    st.innerHTML = id === "f16"
+      ? "Couldn't load the aircraft model. Check your connection and reload the page."
+      : `Couldn't load the ${AIRCRAFT[id].name}. <a href="#airframe">Back to the F-16A</a>`;
   });
+}
+
 
 $("toggle").addEventListener("click", () => setTarget(target >= 0.5 ? 0 : 1));
 $("explode").addEventListener("input", (e) => {
@@ -153,7 +195,6 @@ function drawLock() {
 const cockCam = new THREE.PerspectiveCamera(68, 1, 0.02, 200);
 cockCam.rotation.order = "YXZ";
 const cockpit = { scene: null, ready: null, look: [...START], target: [...START], dragging: null };
-let mode = "airframe";
 
 function loadCockpit() {
   const s = $("cstatus");
@@ -185,61 +226,74 @@ function loadCockpit() {
   return cockpit.ready;
 }
 
-const TITLES = {
-  airframe: ["F-16A", "Airframe · exploded view"],
-  cockpit: ["757-200", "Flight deck"],
-  fly: ["F-16A", "Ring course"],
-};
+const SUBTITLES = { airframe: "Airframe · exploded view", cockpit: "Flight deck", fly: "Ring course" };
+function updateTitle() {
+  $("title").textContent = mode === "cockpit" ? "757-200" : AIRCRAFT[plane].name;
+  $("subtitle").textContent = SUBTITLES[mode];
+  for (const a of document.querySelectorAll(".planes a[data-plane]")) {
+    a.href = a.dataset.plane === "f16" ? `#${mode}` : `#${mode}/${a.dataset.plane}`;
+  }
+}
 
-function applyMode(next) {
-  fly.game?.setActive(next === "fly");
+function applyRoute({ mode: next, plane: nextPlane }) {
   mode = next;
+  if (nextPlane !== plane || !planes[nextPlane]) showAircraft(nextPlane);
+  for (const [id, g] of Object.entries(fly.games)) g.setActive(mode === "fly" && id === plane);
   document.body.classList.toggle("mode-cockpit", mode === "cockpit");
   document.body.classList.toggle("mode-airframe", mode === "airframe");
   document.body.classList.toggle("mode-fly", mode === "fly");
   for (const a of document.querySelectorAll(".modes a[data-mode]")) {
     if (a.dataset.mode === mode) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   }
-  [$("title").textContent, $("subtitle").textContent] = TITLES[mode];
+  updateTitle();
   controls.enabled = mode === "airframe";
   hovered = null;
   if (mode === "cockpit" && !cockpit.ready) loadCockpit();
-  if (mode === "fly") loadFly();
+  if (mode === "fly") loadFly(plane);
 }
 
-const modeFromHash = () => ({ "#cockpit": "cockpit", "#fly": "fly" })[location.hash] ?? "airframe";
+// routes: #airframe, #airframe/c172, #cockpit, #fly, #fly/c172; anything else = F-16 airframe
+function route() {
+  const [m, p] = location.hash.slice(1).split("/");
+  const mode = { cockpit: "cockpit", fly: "fly" }[m] ?? "airframe";
+  return { mode, plane: mode !== "cockpit" && p in AIRCRAFT ? p : mode === "cockpit" ? plane : "f16" };
+}
+const sameRoute = (r) => r.mode === mode && r.plane === plane;
 
-// ---- fly mode: lazy-loaded ring-course game ---------------------------------
-const fly = { game: null, ready: null };
-function loadFly() {
-  if (fly.ready) return fly.ready.then(() => fly.game?.setActive(mode === "fly"));
+// ---- fly mode: lazy-loaded ring-course game, one game per aircraft -----------
+const FLY = {
+  f16: { kind: "jet", scale: 1, courseScale: 1, ringScale: 1, bestKey: "f16-ring-best" },
+  c172: { kind: "prop", scale: 0.73, courseScale: 0.5, ringScale: 0.7, bestKey: "c172-ring-best" },
+};
+const fly = { games: {}, ready: {} };
+function loadFly(id) {
+  if (fly.ready[id]) return fly.ready[id].then(() => fly.games[id]?.setActive(mode === "fly" && plane === id));
   const s = $("fstatus");
   s.hidden = false; s.classList.remove("error"); s.textContent = "Preparing the course…";
-  fly.ready = Promise.all([ready, import("./fly.js?v=9")])
-    .then(([, { createFly }]) => {
-      if (!airframeRoot) throw new Error("F-16 model unavailable");
-      fly.game = createFly({ renderer, f16: airframeRoot, env: scene.environment, reduced });
-      fly.game.resize(camera.aspect);
-      fly.game.setActive(mode === "fly");
-      s.hidden = true;
+  fly.ready[id] = Promise.all([loadAirframe(id), import("./fly.js?v=10")])
+    .then(([{ root }, { createFly, PROFILES }]) => {
+      fly.games[id] = createFly({ renderer, env: scene.environment, reduced, aircraft: { id, root, profile: PROFILES[id], ...FLY[id] } });
+      fly.games[id].resize(camera.aspect);
+      fly.games[id].setActive(mode === "fly" && plane === id);
+      if (plane === id) s.hidden = true;
     })
     .catch((err) => {
-      fly.ready = null;
+      delete fly.ready[id];
       console.warn("fly mode failed to load", err);
       s.classList.add("error");
       s.innerHTML = 'Couldn\'t start the ring course. <a href="#airframe">Back to the airframe</a>';
     });
-  return fly.ready;
+  return fly.ready[id];
 }
 let fadeTimer = 0;
 function switchMode() {
   // a quick back-and-forth cancels the pending switch; the hash at the end of the fade wins
   clearTimeout(fadeTimer);
   const c = $("stage");
-  if (modeFromHash() === mode) return c.classList.remove("fading");
-  if (reduced) return applyMode(modeFromHash());
+  if (sameRoute(route())) return c.classList.remove("fading");
+  if (reduced) return applyRoute(route());
   c.classList.add("fading");
-  fadeTimer = setTimeout(() => { applyMode(modeFromHash()); c.classList.remove("fading"); }, 250);
+  fadeTimer = setTimeout(() => { applyRoute(route()); c.classList.remove("fading"); }, 250);
 }
 addEventListener("hashchange", switchMode);
 
@@ -288,7 +342,7 @@ function resize() {
   cockCam.aspect = camera.aspect;
   cockCam.fov = camera.aspect < 0.8 ? 80 : 68;
   cockCam.updateProjectionMatrix();
-  fly.game?.resize(camera.aspect);
+  for (const g of Object.values(fly.games)) g.resize(camera.aspect);
 }
 addEventListener("resize", resize);
 resize();
@@ -297,7 +351,7 @@ const clock = new THREE.Clock();
 const ticks = document.querySelector(".heading-ticks");
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.05);
-  if (mode === "fly") return fly.game ? fly.game.frame(dt) : renderer.clear();
+  if (mode === "fly") return fly.games[plane] ? fly.games[plane].frame(dt) : renderer.clear();
   if (mode === "cockpit") {
     if (!cockpit.scene) return renderer.clear();
     cockpit.look = stepLook(cockpit.look, cockpit.target, dt, { reduced });
@@ -313,15 +367,19 @@ renderer.setAnimationLoop(() => {
   drawLock();
 });
 
+// boot last: everything above is defined by now
+const ready = showAircraft(route().plane);
+
 window.__viewer = {
   ready, camera, cockCam,
   get parts() { return parts; },
   get mode() { return mode; },
   get cockpitReady() { return cockpit.ready; },
   get look() { return cockpit.look; },
-  get fly() { return fly.game; },
-  get flyReady() { return fly.ready; },
+  get fly() { return fly.games[plane]; },
+  get flyReady() { return fly.ready[plane]; },
+  get plane() { return plane; },
   setT(v) { setTarget(v); t = v; apply(); },
 };
 
-applyMode(modeFromHash());
+applyRoute(route());

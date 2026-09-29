@@ -207,6 +207,16 @@ body::after {
 .mode-cockpit::after { opacity: 1; }
 .hud-top, .hud-bottom, .heading, .hint, .status, .tape, #lock { z-index: 2; }
 
+/* ---- aircraft switch -------------------------------------------------------- */
+.titleblock { display: flex; flex-direction: column; gap: 12px; pointer-events: auto; }
+.planes { display: flex; gap: 14px; font-size: 12px; }
+.planes a { text-decoration: none; color: var(--hud-mid); padding-bottom: 3px; border-bottom: 1px solid transparent; }
+.planes a:hover { color: var(--hud); }
+.planes a[aria-current] { color: var(--hud); border-bottom-color: var(--hud); }
+.mode-cockpit .planes { display: none; }
+.credit-c172, body[data-plane="c172"] .credit-airframe { display: none; }
+body[data-plane="c172"]:not(.mode-cockpit) .credit-c172 { display: inline; }
+
 /* ---- fly mode ---------------------------------------------------------- */
 .flyhud { display: none; }
 .mode-fly .flyhud { display: block; }
