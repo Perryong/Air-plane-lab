@@ -96,6 +96,8 @@ Four 1px corner brackets that track the hovered (or tapped) part's projected bou
 Top-centre horizontal tape shown in Cockpit mode: 1px major ticks every 40px (10°), minor every 8px, a solid green caret above, three-digit B612 Mono heading beneath; slides as the visitor looks around. Edges fade out with a mask.
 ### Legibility Scrim (flight deck only)
 Soft sky-0 fades (78% → 0) along the top 150px and bottom 130px, only in Cockpit mode, so green ink holds over the bright interior. It is a legibility device, not decoration; never a panel.
+### Aircraft Switch
+Under the designation in Airframe and Fly: two text links (F-16A · C172), current one full green with a 1px underline, the other at 62%. Hidden in Cockpit mode. The designation, section count and credit follow the chosen aircraft.
 ### Navigation
 Mode switch as text links (`#airframe`, `#cockpit`); current mode full green with a 1px underline, the other at 62%, full green on hover.
 
