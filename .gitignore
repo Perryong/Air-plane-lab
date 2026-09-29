@@ -7,3 +7,5 @@ blender/f16_raw.glb
 blender/src_cockpit/
 blender/cockpit_raw.glb
 __pycache__/
+blender/src_cessna/
+blender/cessna_raw.glb
