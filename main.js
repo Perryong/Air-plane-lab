@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js?v=10";
-import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=10";
+import { partOffset, stepT, framePull } from "./explode.js?v=11";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=11";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -230,8 +230,11 @@ const SUBTITLES = { airframe: "Airframe · exploded view", cockpit: "Flight deck
 function updateTitle() {
   $("title").textContent = mode === "cockpit" ? "757-200" : AIRCRAFT[plane].name;
   $("subtitle").textContent = SUBTITLES[mode];
-  for (const a of document.querySelectorAll(".planes a[data-plane]")) {
-    a.href = a.dataset.plane === "f16" ? `#${mode}` : `#${mode}/${a.dataset.plane}`;
+  const suffix = (id) => (id === "f16" ? "" : `/${id}`);
+  for (const a of document.querySelectorAll(".planes a[data-plane]")) a.href = `#${mode}${suffix(a.dataset.plane)}`;
+  // mode links keep the chosen aircraft (the cockpit is its own aircraft)
+  for (const a of document.querySelectorAll(".modes a[data-mode]")) {
+    a.href = a.dataset.mode === "cockpit" ? "#cockpit" : `#${a.dataset.mode}${suffix(plane)}`;
   }
 }
 
@@ -267,10 +270,14 @@ const FLY = {
 };
 const fly = { games: {}, ready: {} };
 function loadFly(id) {
-  if (fly.ready[id]) return fly.ready[id].then(() => fly.games[id]?.setActive(mode === "fly" && plane === id));
+  if (fly.ready[id]) return fly.ready[id].then(() => {
+    const g = fly.games[id];
+    g?.setActive(mode === "fly" && plane === id);
+    if (g && plane === id) $("fstatus").hidden = true; // clear another aircraft's pending line
+  });
   const s = $("fstatus");
   s.hidden = false; s.classList.remove("error"); s.textContent = "Preparing the course…";
-  fly.ready[id] = Promise.all([loadAirframe(id), import("./fly.js?v=10")])
+  fly.ready[id] = Promise.all([loadAirframe(id), import("./fly.js?v=11")])
     .then(([{ root }, { createFly, PROFILES }]) => {
       fly.games[id] = createFly({ renderer, env: scene.environment, reduced, aircraft: { id, root, profile: PROFILES[id], ...FLY[id] } });
       fly.games[id].resize(camera.aspect);
@@ -280,6 +287,8 @@ function loadFly(id) {
     .catch((err) => {
       delete fly.ready[id];
       console.warn("fly mode failed to load", err);
+      if (plane !== id) return; // the user already moved on to another aircraft
+      s.hidden = false;
       s.classList.add("error");
       s.innerHTML = 'Couldn\'t start the ring course. <a href="#airframe">Back to the airframe</a>';
     });

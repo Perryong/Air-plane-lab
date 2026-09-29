@@ -4,8 +4,8 @@ import * as THREE from "three";
 import {
   forward, stepFlight, terrainHeight, makeCourse, hitGround,
   startState, respawnState, newRace, advanceRace, combineInput,
-} from "./flight.js?v=10";
-export { PROFILES } from "./flight.js?v=10";
+} from "./flight.js?v=11";
+export { PROFILES } from "./flight.js?v=11";
 
 const $ = (id) => document.getElementById(id);
 const readBest = (key) => { try { const v = parseFloat(localStorage.getItem(key)); return v > 0 ? v : null; } catch { return null; } };
