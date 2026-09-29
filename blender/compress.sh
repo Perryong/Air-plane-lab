@@ -15,3 +15,8 @@ if [ "$(wc -c < public/cockpit.glb)" -gt 20971520 ]; then
     --compress draco --texture-compress webp --texture-size 1024 --simplify false \
     --join false --flatten false --instance false --palette false --prune false
 fi
+
+# Cessna 172SP (~25 MB raw): elevator is a mesh node, so default pruning is safe.
+npx -y @gltf-transform/cli@4 optimize blender/cessna_raw.glb public/cessna.glb \
+  --compress draco --texture-compress webp --texture-size 2048 --simplify false \
+  --join false --flatten false --instance false --palette false
