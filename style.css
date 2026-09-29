@@ -214,8 +214,9 @@ body::after {
 .planes a:hover { color: var(--hud); }
 .planes a[aria-current] { color: var(--hud); border-bottom-color: var(--hud); }
 .mode-cockpit .planes { display: none; }
-.credit-c172, body[data-plane="c172"] .credit-airframe { display: none; }
-body[data-plane="c172"]:not(.mode-cockpit) .credit-c172 { display: inline; }
+.credit-c172, .credit-b777, body:not([data-plane="f16"]) .credit-airframe { display: none; }
+body[data-plane="c172"]:not(.mode-cockpit) .credit-c172,
+body[data-plane="b777"]:not(.mode-cockpit) .credit-b777 { display: inline; }
 
 /* ---- fly mode ---------------------------------------------------------- */
 .flyhud { display: none; }

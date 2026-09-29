@@ -4,8 +4,8 @@ import * as THREE from "three";
 import {
   forward, stepFlight, terrainHeight, makeCourse, hitGround,
   startState, respawnState, newRace, advanceRace, combineInput,
-} from "./flight.js?v=11";
-export { PROFILES } from "./flight.js?v=11";
+} from "./flight.js?v=12";
+export { PROFILES } from "./flight.js?v=12";
 
 const $ = (id) => document.getElementById(id);
 const readBest = (key) => { try { const v = parseFloat(localStorage.getItem(key)); return v > 0 ? v : null; } catch { return null; } };
@@ -15,7 +15,7 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 // aircraft = { id, root, profile, kind: "jet"|"prop", scale, courseScale, ringScale, bestKey }
 export function createFly({ renderer, env, reduced, aircraft }) {
-  const P = aircraft.profile, jetKind = aircraft.kind === "jet";
+  const P = aircraft.profile, jetKind = aircraft.kind === "jet", airliner = aircraft.kind === "airliner";
   const BEST = aircraft.bestKey;
   const scene = new THREE.Scene();
   scene.environment = env;
@@ -84,13 +84,14 @@ export function createFly({ renderer, env, reduced, aircraft }) {
   scene.updateMatrixWorld(true);
   const partBox = (name) => new THREE.Box3().setFromObject(model.getObjectByName(name));
   // wingtips (left = -Z): the jet has two wing parts, the Cessna one high wing
-  const wl = partBox(jetKind ? "wing_L" : "wing"), wr = partBox(jetKind ? "wing_R" : "wing");
+  const twoWings = !!model.getObjectByName("wing_L");
+  const wl = partBox(twoWings ? "wing_L" : "wing"), wr = partBox(twoWings ? "wing_R" : "wing");
   const tipL = new THREE.Vector3(wl.getCenter(new THREE.Vector3()).x, wl.max.y, wl.min.z);
   const tipR = new THREE.Vector3(wr.getCenter(new THREE.Vector3()).x, wr.max.y, wr.max.z);
 
   // jet: afterburner (additive outer flame, hot core, orange light)
   // prop: spinning propeller + translucent disc, elevator that follows pitch input
-  let flame, core, glow, prop, disc, elevator;
+  let flame, core, glow, prop, disc, elevator, fans = [];
   if (jetKind) {
     const nozzle = partBox("engine_nozzle");
     const burnerG = new THREE.Group();
@@ -107,6 +108,9 @@ export function createFly({ renderer, env, reduced, aircraft }) {
     glow = new THREE.PointLight(0xff7a2a, 0, 40, 2);
     burnerG.add(glow);
     bankG.add(burnerG);
+  } else if (airliner) {
+    fans = ["fan_L", "fan_R"].map((n) => model.getObjectByName(n));
+    elevator = model.getObjectByName("elevator");
   } else {
     prop = model.getObjectByName("propeller");
     elevator = model.getObjectByName("elevator");
@@ -147,7 +151,7 @@ export function createFly({ renderer, env, reduced, aircraft }) {
   // ---- state ----------------------------------------------------------------
   let jet = startState(course, P), race = newRace(), best = readBest(BEST);
   let paused = false, active = false, crashT = 0, bankRate = 0, trailOp = 0, flameLen = 0, t = 0, rpm = 0, elev = 0;
-  const CAM = jetKind ? { back: 26, up: 7 } : { back: 16, up: 5 };
+  const CAM = jetKind ? { back: 26, up: 7 } : airliner ? { back: 55, up: 15 } : { back: 16, up: 5 };
   const keys = new Set();
   let touch = { pitch: 0, roll: 0, burner: false };
   const camPos = new THREE.Vector3(), look = new THREE.Vector3(), tmp = new THREE.Vector3();
@@ -281,6 +285,12 @@ export function createFly({ renderer, env, reduced, aircraft }) {
       flame.material.opacity = 0.25 + 0.6 * jet.burner;
       core.material.opacity = 0.4 + 0.5 * jet.burner;
       glow.intensity = 30 + 220 * jet.burner;
+    } else if (airliner) {
+      // both fans spin about the engine (nose) axis; thrust spools them up
+      rpm = flying ? 18 + 40 * jet.burner : 6;
+      for (const fan of fans) fan.rotation.x += rpm * dt;
+      elev += (-(flying && !race.finished ? inp.pitch : 0) * 0.35 - elev) * (1 - Math.exp(-dt * 6));
+      elevator.rotation.z = elev;
     } else {
       // propeller spins up with throttle; the disc stands in for motion blur
       rpm = flying ? 22 + 58 * jet.burner : 9;
@@ -292,7 +302,7 @@ export function createFly({ renderer, env, reduced, aircraft }) {
     }
 
     // vapour trails
-    const pull = (Math.abs(inp.pitch) + Math.abs(bankRate) * 0.6) * clamp((jet.speed - P.cruise * 0.85) / (P.cruise * 0.85), 0, 1) * (jetKind ? 1 : 0.6);
+    const pull = (Math.abs(inp.pitch) + Math.abs(bankRate) * 0.6) * clamp((jet.speed - P.cruise * 0.85) / (P.cruise * 0.85), 0, 1) * (jetKind ? 1 : airliner ? 0.5 : 0.6);
     trailOp += (clamp(pull, 0, 1) - trailOp) * (1 - Math.exp(-dt * 6));
     pushTrail(trails[0], tipL); pushTrail(trails[1], tipR);
     for (const tr of trails) tr.material.opacity = flying ? trailOp * 0.8 : 0;
@@ -348,10 +358,10 @@ export function createFly({ renderer, env, reduced, aircraft }) {
   function setActive(on) {
     active = on;
     if (on) {
-      el.burner.querySelector("span").textContent = jetKind ? "AB" : "THR";
-      $("ab").textContent = jetKind ? "AB" : "THR";
-      $("ab").setAttribute("aria-label", jetKind ? "Afterburner (hold)" : "Full throttle (hold)");
-      document.querySelector(".legend dd:nth-of-type(4)").textContent = jetKind ? "Afterburner" : "Full throttle";
+      el.burner.querySelector("span").textContent = jetKind ? "AB" : airliner ? "TOGA" : "THR";
+      $("ab").textContent = jetKind ? "AB" : airliner ? "TOGA" : "THR";
+      $("ab").setAttribute("aria-label", jetKind ? "Afterburner (hold)" : airliner ? "Take-off thrust (hold)" : "Full throttle (hold)");
+      document.querySelector(".legend dd:nth-of-type(4)").textContent = jetKind ? "Afterburner" : airliner ? "Take-off thrust" : "Full throttle";
       hud();
     } else { paused = race.started && !race.finished ? true : paused; clearInput(); }
   }

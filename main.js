@@ -3,8 +3,8 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
-import { partOffset, stepT, framePull } from "./explode.js?v=11";
-import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=11";
+import { partOffset, stepT, framePull } from "./explode.js?v=12";
+import { START, clampLook, headingDeg, stepLook, dragToLook } from "./lookaround.js?v=12";
 
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
@@ -65,6 +65,7 @@ let parts = [], t = 0, target = 0, hovered = null;
 const AIRCRAFT = {
   f16: { glb: "public/f16.glb", name: "F-16A" },
   c172: { glb: "public/cessna.glb", name: "C172" },
+  b777: { glb: "public/b777.glb", name: "777" },
 };
 const planes = {}; // id -> Promise<{ root, parts }>
 let plane = "f16", shown = null, mode = "airframe";
@@ -267,6 +268,8 @@ const sameRoute = (r) => r.mode === mode && r.plane === plane;
 const FLY = {
   f16: { kind: "jet", scale: 1, courseScale: 1, ringScale: 1, bestKey: "f16-ring-best" },
   c172: { kind: "prop", scale: 0.73, courseScale: 0.5, ringScale: 0.7, bestKey: "c172-ring-best" },
+  // real size would be ~4.9x the F-16 and could not fit a ring; 2x keeps it readable and flyable
+  b777: { kind: "airliner", scale: 2, courseScale: 1.4, ringScale: 2.5, bestKey: "b777-ring-best" },
 };
 const fly = { games: {}, ready: {} };
 function loadFly(id) {
@@ -277,7 +280,7 @@ function loadFly(id) {
   });
   const s = $("fstatus");
   s.hidden = false; s.classList.remove("error"); s.textContent = "Preparing the course…";
-  fly.ready[id] = Promise.all([loadAirframe(id), import("./fly.js?v=11")])
+  fly.ready[id] = Promise.all([loadAirframe(id), import("./fly.js?v=12")])
     .then(([{ root }, { createFly, PROFILES }]) => {
       fly.games[id] = createFly({ renderer, env: scene.environment, reduced, aircraft: { id, root, profile: PROFILES[id], ...FLY[id] } });
       fly.games[id].resize(camera.aspect);
