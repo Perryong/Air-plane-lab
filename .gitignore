@@ -9,3 +9,5 @@ blender/cockpit_raw.glb
 __pycache__/
 blender/src_cessna/
 blender/cessna_raw.glb
+blender/src_b777/
+blender/b777_raw.glb

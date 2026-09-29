@@ -1,4 +1,4 @@
-# usage: python3 tests/check_glb.py public/f16.glb [f16|c172]
+# usage: python3 tests/check_glb.py public/f16.glb [f16|c172|b777]
 import json, struct, sys, math
 
 AIRCRAFT = {
@@ -6,8 +6,11 @@ AIRCRAFT = {
             "stabilizer_L", "stabilizer_R", "engine_nozzle", "stores"},
     "c172": {"fuselage", "wing", "struts", "propeller", "cowling", "windows",
              "door_L", "door_R", "interior", "main_gear", "nose_gear", "tail"},
+    "b777": {"fuselage", "wing_L", "wing_R", "flaps_L", "flaps_R", "engine_L", "engine_R",
+             "nose_gear", "main_gear", "tail_fin", "stabilizers"},
 }
-CHILDREN = {"c172": {"tail": "elevator"}}  # movable surfaces kept as named child nodes
+CHILDREN = {"c172": {"tail": "elevator"},
+            "b777": {"engine_L": "fan_L", "engine_R": "fan_R", "stabilizers": "elevator"}}  # movable surfaces kept as named child nodes
 
 def load(path):
     b = open(path, "rb").read()
@@ -36,7 +39,8 @@ def check(g, kind="f16"):
         assert ex["label"], name
         orders.append(ex["order"])
     assert sorted(orders) == list(range(len(PARTS))), "order must be 0..n-1"
-    assert g.get("images"), "textures not embedded"
+    if kind != "b777":  # the 777 is colour materials only (no textures in the source)
+        assert g.get("images"), "textures not embedded"
     for part, child in CHILDREN.get(kind, {}).items():
         kids = [g["nodes"][i].get("name") for i in nodes[part].get("children", [])]
         assert child in kids, f"{part} has no child node {child!r}"

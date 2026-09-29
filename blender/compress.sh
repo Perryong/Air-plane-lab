@@ -20,3 +20,8 @@ fi
 npx -y @gltf-transform/cli@4 optimize blender/cessna_raw.glb public/cessna.glb \
   --compress draco --texture-compress webp --texture-size 2048 --simplify false \
   --join false --flatten false --instance false --palette false
+
+# Boeing 777 (colour materials only, no textures): elevator and fans are mesh nodes.
+npx -y @gltf-transform/cli@4 optimize blender/b777_raw.glb public/b777.glb \
+  --compress draco --simplify false \
+  --join false --flatten false --instance false --palette false
